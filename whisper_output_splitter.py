@@ -18,46 +18,6 @@ def convert_seconds_to_srt_time(seconds) -> str:
     _seconds = int(seconds) % 60
     return f"{_hours:02}:{_minutes:02}:{_seconds:06.3f}".replace('.', ',')
 
-
-# def split_text_into_chunks(text, total_duration) -> List[Tuple[str, float]]:
-#     # https://stackoverflow.com/questions/61757407/how-to-ignore-punctuation-in-between-words-using-word-tokenize-in-nltk
-#
-#     from nltk.tokenize import RegexpTokenizer
-#
-#     # punctuation = r',\.!\?]?'
-#     # regexp_tokenizer = RegexpTokenizer(r'\w+' + punctuation + r'\w+?|[^\s]+?', False)
-#     # regexp_tokenizer = RegexpTokenizer(r'\w+|\$[\d\.]+|[\.?]') # Any word, including special cases followed by a seprator
-#     #
-#     # sentences = regexp_tokenizer.tokenize(text)
-#
-#     # sentences = sent_tokenize(text)
-#
-#     print(sentences)
-#     # Calculate the duration per sentence
-#     duration_per_sentence = total_duration / len(sentences)
-#
-#     final_chunks = []
-#     for k, sentence in enumerate(sentences):
-#         # Tokenize the sentence into words
-#         words = word_tokenize(sentence)
-#
-#         # Split the sentence into chunks by commas with minimum chunk len
-#         min_chunk_words = 2
-#         chunk = []
-#         for word in words:
-#             chunk.append(word)
-#             if word in [',', '.', '!', '?']: #and len(chunk) >= min_chunk_words:
-#                 print(f"{sentence}--{k}")
-#                 final_chunks.append((' '.join(chunk), duration_per_sentence))
-#                 chunk = []
-#
-#         # Add any remaining words as a chunk
-#         if chunk:
-#             final_chunks.append((' '.join(chunk), duration_per_sentence))
-#
-#     return final_chunks
-
-
 def split_text_into_chunks(text, total_duration):
     # Define the tokenizer to split on commas, periods, and question marks
 
@@ -67,10 +27,7 @@ def split_text_into_chunks(text, total_duration):
 
     # Tokenize the text into chunks
     sentences = tokenizer.tokenize(text)
-
-    # Calculate the duration per chunk
-    duration_per_chunk_avg = total_duration / len(sentences)
-    total_words = len(re.split('\s+', text))
+    total_words = len(re.split(r'\s+', text))
 
     # Create the final list of chunks with their respective durations
     final_chunks = []
@@ -86,7 +43,9 @@ def split_text_into_chunks(text, total_duration):
         remaining_length -= current_length
 
         if current_length > min_words and remaining_length > min_remaining_words or k == len(sentences) - 1:
-            calc_duration = duration_per_chunk_avg * current_length / total_words
+
+            calc_duration = total_duration * current_length / total_words
+            print(f"${calc_duration} = {total_duration} * {current_length} / {total_words}")
             current_sent = current_sent[0].upper() + current_sent[1:]
             final_chunks.append((current_sent.strip(), calc_duration))
             current_chunks = []
@@ -114,8 +73,14 @@ def split_transcript(transcript, max_words=7) -> str:
         chunks = split_text_into_chunks(text, end_time - start_time)
 
         # Calculate the start and end times for each chunk
-        chunk_times = [(start_time + (chunks[i-1][1] if i > 0 else 0),
-                        start_time + chunks[i][1]) for i in range(len(chunks))]
+        chunk_times = []
+        timeline = 0
+        for i in range(len(chunks)):
+            chunk_times.append(
+                            (start_time + timeline,
+                            start_time + timeline + chunks[i][1]))
+            timeline += chunks[i][1]
+
 
         # Construct the output
         for (chunk_txt, duration), times in zip(chunks, chunk_times):
