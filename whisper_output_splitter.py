@@ -30,3 +30,5 @@ def split_transcript(transcript, max_words=7):
 
 #transcript = "[00:00.000 --> 00:04.320] The example text provided is split into chunks with the specified maximum word limit, and interpolated times are calculated based on the assumption of 150 words per minute."
 #print(split_transcript(transcript))
+
+
