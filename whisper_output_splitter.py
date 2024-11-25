@@ -1,4 +1,5 @@
 import argparse
+import itertools
 import re
 from pathlib import Path
 from typing import List, Tuple
@@ -18,16 +19,40 @@ def convert_seconds_to_srt_time(seconds) -> str:
     _seconds = int(seconds) % 60
     return f"{_hours:02}:{_minutes:02}:{_seconds:06.3f}".replace('.', ',')
 
+
+
+def split_sentence_on_conjunction(sentence):
+    """
+    Drop a conjunction and split sentence into two parts
+    And that's how small groups became, let's say, chat rooms in Pirețele and I was in all the chat rooms and if I could, if I needed, I would bring them.
+    """
+    conjunctions = {'and', 'but', 'or', 'nor', 'for', 'yet', 'so'}
+    words = word_tokenize(sentence)
+
+    if len(words) < 10:
+        return [sentence]
+
+    for i in range(4, len(words) - 4):
+        if words[i] in conjunctions:
+            first_part = ' '.join(words[:i]).strip()
+            second_part = ' '.join(words[i:]).strip()
+            return split_sentence_on_conjunction(first_part) + split_sentence_on_conjunction(second_part)
+
+    return [sentence]
+
+
 def split_text_into_chunks(text, total_duration):
     # Define the tokenizer to split on commas, periods, and question marks
-
     from nltk.tokenize import RegexpTokenizer
-    tokenizer = RegexpTokenizer(r'[^,?.|-]+[?!]?')
-    # Anything but a split char, then capture.  Anything missing in capture is dropped
+    tokenizer = RegexpTokenizer(r'[^.?|,-]+[?!]?')
+    # Future version to start allowing for numbers no to be split i.e. 50,000
+    # tokenizer = RegexpTokenizer(r'([?!.|-]+|^\d+,^\d+|(?:[?!]))', gaps=True)
 
-    # Tokenize the text into chunks
+    # Anything but a split char, then capture.  Anything missing in capture is dropped
     sentences = tokenizer.tokenize(text)
     total_words = len(re.split(r'\s+', text))
+
+    sentences = list(itertools.chain(*[split_sentence_on_conjunction(sent) for sent in sentences]))
 
     # Create the final list of chunks with their respective durations
     final_chunks = []
