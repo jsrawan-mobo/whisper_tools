@@ -62,7 +62,8 @@ def split_text_into_chunks(text, total_duration):
     # Define the tokenizer to split on commas, periods, and question marks
 
     from nltk.tokenize import RegexpTokenizer
-    tokenizer = RegexpTokenizer(r'[^,?.|]+[,?.!]?') # Anything but a split char, then capture
+    tokenizer = RegexpTokenizer(r'[^,?.|-]+[?!]?')
+    # Anything but a split char, then capture.  Anything missing in capture is dropped
 
     # Tokenize the text into chunks
     sentences = tokenizer.tokenize(text)
@@ -73,9 +74,22 @@ def split_text_into_chunks(text, total_duration):
 
     # Create the final list of chunks with their respective durations
     final_chunks = []
-    for sent in sentences:
-        calc_duration = duration_per_chunk_avg * len(re.split('\s+', sent))/total_words
-        final_chunks.append((sent.strip(), calc_duration))
+    current_chunks = []
+    min_words = 2
+    min_remaining_words = 3
+    remaining_length = total_words
+
+    for k, sent in enumerate(sentences):
+        current_chunks.append(sent.strip())
+        current_sent = ' '.join(current_chunks)
+        current_length = len(re.split(r'\s+', current_sent))
+        remaining_length -= current_length
+
+        if current_length > min_words and remaining_length > min_remaining_words or k == len(sentences) - 1:
+            calc_duration = duration_per_chunk_avg * current_length / total_words
+            current_sent = current_sent[0].upper() + current_sent[1:]
+            final_chunks.append((current_sent.strip(), calc_duration))
+            current_chunks = []
 
     print(len(final_chunks), final_chunks)
     return final_chunks
@@ -106,7 +120,9 @@ def split_transcript(transcript, max_words=7) -> str:
         # Construct the output
         for (chunk_txt, duration), times in zip(chunks, chunk_times):
             new_index += 1
-            output += f"{new_index}\n{convert_seconds_to_srt_time(times[0])} --> {convert_seconds_to_srt_time(times[1])}\n{chunk_txt.strip()}\n\n"
+            output += f"{new_index}\n"
+            output += f"{convert_seconds_to_srt_time(times[0])} --> {convert_seconds_to_srt_time(times[1])}\n"
+            output += f"{chunk_txt}\n\n"
 
     # Construct the output
     return output
