@@ -1,0 +1,17 @@
+[tool.poetry]
+name = "whisper-cpp-master"
+version = "0.1.0"
+description = ""
+authors = ["Jag Srawan"]
+readme = "README.md"
+packages = [{include = "whisper"}]
+
+[tool.poetry.dependencies]
+python = "^3.13"
+requests = "^2.32.3"
+torch = { url = "https://download.pytorch.org/whl/cpu/torch-2.5.1-cp39-none-macosx_11_0_arm64.whl#sha256=8046768b7f6d35b85d101b4b38cba8aa2f3cd51952bc4c06a49580f2ce682291" }
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
