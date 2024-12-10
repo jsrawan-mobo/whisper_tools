@@ -1,6 +1,9 @@
 import argparse
 import itertools
+import os
 import re
+from copy import copy
+from enum import Enum
 from pathlib import Path
 from typing import List, Tuple
 
@@ -8,6 +11,11 @@ import nltk
 from nltk.tokenize import sent_tokenize, word_tokenize
 
 
+class Action(Enum):
+    ALL = 'ALL'
+    CREATE_PROJECT = 'create_project'
+    EXTRACT_AUDIO = 'extract_audio'
+    EXTRACT_SRT = 'extract_srt'
 
 def convert_srt_time_to_seconds(srt_time) -> float:
     hours, minutes, seconds, milliseconds = map(float, re.split('[:,]', srt_time))
@@ -70,12 +78,12 @@ def split_text_into_chunks(text, total_duration):
         if current_length > min_words and remaining_length > min_remaining_words or k == len(sentences) - 1:
 
             calc_duration = total_duration * current_length / total_words
-            print(f"${calc_duration} = {total_duration} * {current_length} / {total_words}")
+            #print(f"${calc_duration} = {total_duration} * {current_length} / {total_words}")
             current_sent = current_sent[0].upper() + current_sent[1:]
             final_chunks.append((current_sent.strip(), calc_duration))
             current_chunks = []
 
-    print(len(final_chunks), final_chunks)
+    #print(len(final_chunks), final_chunks)
     return final_chunks
 
 
@@ -123,23 +131,88 @@ def read_file(file_path):
         content = file.read()
     return content
 
+# Custom action type to validate against allowed actions
+def action_type(action):
+    try:
+        return Action(action)
+    except ValueError:
+        raise argparse.ArgumentTypeError(f"Invalid action: {action}. Allowed actions are: {', '.join([a.value for a in Action])}")
+
+
+def get_project_names(project_csv_path, source_mpeg_folder, source_mpeg_name, subject_name, subject_tag, campaign):
+
+    source_mpeg_file = os.path.join(source_mpeg_folder, source_mpeg_name)
+    file_date = source_mpeg_name.split("_")[0]
+    project_output_path = os.path.dirname(project_csv_path, f"{file_date}_{subject_tag}_{subject_name}_{campaign}")
+    project_mpeg_file = f"{subject_name}_FULL.mpeg"
+    project_audio_file = f"{subject_name}_FULL.wav"
+    project_srt_file = f"{subject_name}_FULL.srt"
+
+
+    return project_output_path, source_mpeg_file, project_mpeg_file, project_audio_file, project_srt_file
+
+def create_project(project_csv_path):
+    # Open CSV with columns Source_File_Path	Source_File_Name	Subject_Name	Subject_Tag	Campaign
+    # Read each row and create a project folder with the following structure:
+    with open(project_csv_path, 'r') as file:
+        for row in file:
+            source_mpeg_folder, source_mpeg_name, subject_name, subject_tag, campaign = row.strip().split(',')
+            (project_output_path, source_mpeg_file, project_mpeg_file, project_audio_file, project_srt_file) = get_project_names(
+                project_csv_path, source_mpeg_folder, source_mpeg_name, subject_name, subject_tag, campaign)
+            os.makedirs(project_output_path)
+
+            # Copy the source file to the project folder
+            project_mpeg_path = os.path.join(project_output_path, project_mpeg_file)
+            copy(source_mpeg_file, project_mpeg_path)
+
+    return project_audio_file, project_mpeg_file, project_audio_file, project_srt_file
+
+def extract_audio(mpeg_path, project_audio_file) -> str:
+    # Takes a mpeg file and extracts audio in prepration for srt
+    ffmpeg_1 = f"ffmpeg -i {mpeg_path} -vn -acodec copy {project_audio_file}.aac"
+    ffmpeg_2 = f"ffmpeg -i {project_audio_file}.aac  -acodec pcm_s16le -ar 16000 {project_audio_file}.wav"
+
+    os.system(ffmpeg_1)
+    os.system(ffmpeg_2)
+    return f"{project_audio_file}.wav"
+
+
+def extract_srt(project_audio_file, project_srt_file, max_words):
+    # Takes an audio file and create an optimized srt file
+    audio_path =  Path(project_audio_file)
+    whisper_cmd = "./whisper.cpp/main -l en -lpt 2.0 -osrt -m models/ggml-large-v3.bin -f ${audio_path.stem}.wav"
+    os.system(whisper_cmd)
+    srt_file_path = f"{audio_path.stem}.srt"
+    file_content = read_file(srt_file_path)
+    file_output = split_transcript(file_content, max_words=max_words)
+
+    output_file_path = Path(srt_file_path)
+    output_file_path = output_file_path.with_name(output_file_path.stem + '_optimized.srt')
+    with output_file_path.open('w') as output_file:
+        output_file.write(file_output)
+
+
+
 def main():
-    parser = argparse.ArgumentParser(description='Read a file and store its content in a variable.')
-    parser.add_argument('-s', '--srt_file', type=str, help='The path to the file to be read', required=True)
+    parser = argparse.ArgumentParser(description='Process a mpeg file source and creates a project file with SRT and AUDIO assests')
+
+    parser.add_argument('-a', '--action', type=Action, choices=list(Action), help='The action type', required=True)
+    parser.add_argument('-p', '--project_csv_file', type=str, help='The path to the project file to process', required=True)
     parser.add_argument('-m', '--max_words', type=int, default=7, help='Maximum number of words per chunk')
     args = parser.parse_args()
 
     nltk.download('punkt')
     nltk.download('punkt_tab')
 
-    file_content = read_file(args.srt_file)
-    file_output = split_transcript(file_content, max_words=args.max_words)
+    # Note running twice will result
+    if args.action == Action.CREATE_PROJECT or Action.ALL:
+        project_audio_file, project_mpeg_file, project_audio_file, project_srt_file = create_project(args.project_csv_file)
 
-    output_file_path = Path(args.srt_file)
-    output_file_path = output_file_path.with_name(output_file_path.stem + '_optimized.srt')
-    with output_file_path.open('w') as output_file:
-        output_file.write(file_output)
+    if args.action == Action.EXTRACT_AUDIO or Action.ALL:
+        wav_input_path = extract_audio(project_mpeg_file, project_audio_file)
 
+    if args.action == Action.EXTRACT_AUDIO or Action.ALL:
+        extract_audio(wav_input_path, project_srt_file)
 
 if __name__ == '__main__':
     main()
