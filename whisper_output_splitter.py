@@ -1,18 +1,26 @@
 import argparse
+import csv
 import itertools
 import os
 import re
+import subprocess
+from collections import namedtuple
 from copy import copy
 from enum import Enum
 from pathlib import Path
-from typing import List, Tuple
+from shutil import copyfile
+from typing import List, Tuple, NamedTuple
 
 import nltk
 from nltk.tokenize import sent_tokenize, word_tokenize
 
 
+
+Project = namedtuple('Project', ['source_mpeg_path', 'output_path', 'mpeg_file', 'audio_file', 'srt_file'])
+
+
 class Action(Enum):
-    ALL = 'ALL'
+    ALL = 'all'
     CREATE_PROJECT = 'create_project'
     EXTRACT_AUDIO = 'extract_audio'
     EXTRACT_SRT = 'extract_srt'
@@ -139,50 +147,75 @@ def action_type(action):
         raise argparse.ArgumentTypeError(f"Invalid action: {action}. Allowed actions are: {', '.join([a.value for a in Action])}")
 
 
+def run_command_check(cmd, code = 0):
+    # Run the command
+    result = subprocess.run(cmd, shell=True)
+
+    # Check if the output is 0
+    if result.returncode == code:
+        print("Command executed successfully")
+    else:
+        print(result.args)
+        print(result.stderr)
+        print(result.stdout)
+        raise Exception(f"Command failed with return code:{result.returncode}")
+
+
 def get_project_names(project_csv_path, source_mpeg_folder, source_mpeg_name, subject_name, subject_tag, campaign):
 
-    source_mpeg_file = os.path.join(source_mpeg_folder, source_mpeg_name)
+    source_mpeg_path = os.path.join(source_mpeg_folder, source_mpeg_name)
     file_date = source_mpeg_name.split("_")[0]
-    project_output_path = os.path.dirname(project_csv_path, f"{file_date}_{subject_tag}_{subject_name}_{campaign}")
-    project_mpeg_file = f"{subject_name}_FULL.mpeg"
-    project_audio_file = f"{subject_name}_FULL.wav"
-    project_srt_file = f"{subject_name}_FULL.srt"
+    project_output_dir = os.path.join(os.path.dirname(project_csv_path), f"{file_date}_{subject_tag}_{subject_name}_{campaign}")
+    project_mpeg_file = f"{subject_name}_{subject_tag}.mpeg"
+    project_audio_file = f"{subject_name}_{subject_tag}.wav"
+    project_srt_file = f"{subject_name}_{subject_tag}.srt"
+    return source_mpeg_path, project_output_dir, project_mpeg_file, project_audio_file, project_srt_file
 
 
-    return project_output_path, source_mpeg_file, project_mpeg_file, project_audio_file, project_srt_file
-
-def create_project(project_csv_path):
+def read_projects(project_csv_path):
     # Open CSV with columns Source_File_Path	Source_File_Name	Subject_Name	Subject_Tag	Campaign
     # Read each row and create a project folder with the following structure:
+    projects = []
     with open(project_csv_path, 'r') as file:
-        for row in file:
-            source_mpeg_folder, source_mpeg_name, subject_name, subject_tag, campaign = row.strip().split(',')
-            (project_output_path, source_mpeg_file, project_mpeg_file, project_audio_file, project_srt_file) = get_project_names(
+        csv_reader = csv.reader(file)
+        next(csv_reader, None) #header
+        for row in csv_reader:
+            source_mpeg_folder, source_mpeg_name, subject_name, subject_tag, campaign = row
+            (source_mpeg_path, project_output_dir, project_mpeg_file, project_audio_file, project_srt_file) = get_project_names(
                 project_csv_path, source_mpeg_folder, source_mpeg_name, subject_name, subject_tag, campaign)
-            os.makedirs(project_output_path)
+            if source_mpeg_path == "":
+                continue
+            projects.append(Project(source_mpeg_path, project_output_dir, project_mpeg_file, project_audio_file, project_srt_file))
 
-            # Copy the source file to the project folder
-            project_mpeg_path = os.path.join(project_output_path, project_mpeg_file)
-            copy(source_mpeg_file, project_mpeg_path)
+    return projects
 
-    return project_audio_file, project_mpeg_file, project_audio_file, project_srt_file
+def create_project(proj: Project):
+    os.makedirs(proj.output_path, exist_ok=True)
+    # Copy the source file to the project folder
+    project_mpeg_path = os.path.join(proj.output_path, proj.mpeg_file)
+    print(proj)
+    copyfile(proj.source_mpeg_path, project_mpeg_path)
 
-def extract_audio(mpeg_path, project_audio_file) -> str:
-    # Takes a mpeg file and extracts audio in prepration for srt
-    ffmpeg_1 = f"ffmpeg -i {mpeg_path} -vn -acodec copy {project_audio_file}.aac"
-    ffmpeg_2 = f"ffmpeg -i {project_audio_file}.aac  -acodec pcm_s16le -ar 16000 {project_audio_file}.wav"
+def extract_audio(proj: Project) -> str:
+    # Takes a mpeg file and extracts audio in preparation for srt
+    audio_name = Path(proj.audio_file).stem
+    mpeg_path = os.path.join(proj.output_path, proj.mpeg_file)
+    audio_aac_path = os.path.join(proj.output_path, f"{audio_name}.aac")
+    audio_path = os.path.join(proj.output_path, proj.audio_file)
+    ffmpeg_1 = f"ffmpeg -y -i {mpeg_path} -vn -acodec copy {audio_aac_path}"
+    ffmpeg_2 = f"ffmpeg -y -i {audio_aac_path} -acodec pcm_s16le -ar 16000 {audio_path}"
+    run_command_check(ffmpeg_1)
+    run_command_check(ffmpeg_2)
+    return audio_path
 
-    os.system(ffmpeg_1)
-    os.system(ffmpeg_2)
-    return f"{project_audio_file}.wav"
-
-
-def extract_srt(project_audio_file, project_srt_file, max_words):
+def extract_srt(proj: Project, max_words:int):
     # Takes an audio file and create an optimized srt file
-    audio_path =  Path(project_audio_file)
-    whisper_cmd = "./whisper.cpp/main -l en -lpt 2.0 -osrt -m models/ggml-large-v3.bin -f ${audio_path.stem}.wav"
-    os.system(whisper_cmd)
-    srt_file_path = f"{audio_path.stem}.srt"
+    project_audio_path = os.path.join(proj.output_path, proj.audio_file)
+    whisper_cmd = [f"./whisper.cpp/main -l en -lpt 2.0 -osrt -m ./whisper.cpp/models/ggml-large-v3.bin -f {project_audio_path}"]
+
+    run_command_check(whisper_cmd)
+    audio_path = Path(project_audio_path)
+    srt_file_path = f"{audio_path}.srt"
     file_content = read_file(srt_file_path)
     file_output = split_transcript(file_content, max_words=max_words)
 
@@ -199,20 +232,31 @@ def main():
     parser.add_argument('-a', '--action', type=Action, choices=list(Action), help='The action type', required=True)
     parser.add_argument('-p', '--project_csv_file', type=str, help='The path to the project file to process', required=True)
     parser.add_argument('-m', '--max_words', type=int, default=7, help='Maximum number of words per chunk')
-    args = parser.parse_args()
+    parser.add_argument('-n', '--num_projects', type=int, default=None, help='max number of projects process')
+    parser.add_argument('-d', '--duration', type=int, default=None, help='max duration in seconds for each file to extract(for testing)')
 
+
+    args = parser.parse_args()
     nltk.download('punkt')
     nltk.download('punkt_tab')
 
+    projects = read_projects(args.project_csv_file)
+
+    if args.num_projects:
+        projects = projects[:args.num_projects]
+
     # Note running twice will result
-    if args.action == Action.CREATE_PROJECT or Action.ALL:
-        project_audio_file, project_mpeg_file, project_audio_file, project_srt_file = create_project(args.project_csv_file)
+    if args.action in [Action.CREATE_PROJECT, Action.ALL]:
+        for proj in projects:
+            create_project(proj)
 
-    if args.action == Action.EXTRACT_AUDIO or Action.ALL:
-        wav_input_path = extract_audio(project_mpeg_file, project_audio_file)
+    if args.action in [Action.EXTRACT_AUDIO, Action.ALL]:
+        for proj in projects:
+            extract_audio(proj)
 
-    if args.action == Action.EXTRACT_AUDIO or Action.ALL:
-        extract_audio(wav_input_path, project_srt_file)
+    if args.action in [Action.EXTRACT_SRT, Action.ALL]:
+        for proj in projects:
+            extract_srt(proj, args.max_words)
 
 if __name__ == '__main__':
     main()
