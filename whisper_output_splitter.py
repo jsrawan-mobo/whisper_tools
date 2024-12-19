@@ -166,13 +166,13 @@ def get_project_names(project_csv_path, source_mpeg_folder, source_mpeg_name, su
     source_mpeg_path = os.path.join(source_mpeg_folder, source_mpeg_name)
     file_date = source_mpeg_name.split("_")[0]
     project_output_dir = os.path.join(os.path.dirname(project_csv_path), f"{file_date}_{subject_tag}_{subject_name}_{campaign}")
-    project_mpeg_file = f"{subject_name}_{subject_tag}.mpeg"
+    project_mpeg_file = f"{subject_name}_{subject_tag}.mp4"
     project_audio_file = f"{subject_name}_{subject_tag}.wav"
     project_srt_file = f"{subject_name}_{subject_tag}.srt"
     return source_mpeg_path, project_output_dir, project_mpeg_file, project_audio_file, project_srt_file
 
 
-def read_projects(project_csv_path):
+def read_projects(project_csv_path, filter_proj=None):
     # Open CSV with columns Source_File_Path	Source_File_Name	Subject_Name	Subject_Tag	Campaign
     # Read each row and create a project folder with the following structure:
     projects = []
@@ -185,7 +185,8 @@ def read_projects(project_csv_path):
                 project_csv_path, source_mpeg_folder, source_mpeg_name, subject_name, subject_tag, campaign)
             if source_mpeg_path == "":
                 continue
-            projects.append(Project(source_mpeg_path, project_output_dir, project_mpeg_file, project_audio_file, project_srt_file))
+            if not filter_proj or re.search(filter_proj, project_output_dir):
+                projects.append(Project(source_mpeg_path, project_output_dir, project_mpeg_file, project_audio_file, project_srt_file))
 
     return projects
 
@@ -208,10 +209,12 @@ def extract_audio(proj: Project) -> str:
     run_command_check(ffmpeg_2)
     return audio_path
 
-def extract_srt(proj: Project, max_words:int):
+def extract_srt(proj: Project, max_words:int, duration:int):
     # Takes an audio file and create an optimized srt file
     project_audio_path = os.path.join(proj.output_path, proj.audio_file)
-    whisper_cmd = [f"./whisper.cpp/main -l en -lpt 2.0 -osrt -m ./whisper.cpp/models/ggml-large-v3.bin -f {project_audio_path}"]
+
+    duration_cmd = f"-d {duration * 1000}" if duration else ""
+    whisper_cmd = [f"./whisper.cpp/main -l en -lpt 2.0 -osrt -m ./whisper.cpp/models/ggml-large-v3.bin {duration_cmd }-f {project_audio_path}"]
 
     run_command_check(whisper_cmd)
     audio_path = Path(project_audio_path)
@@ -234,13 +237,14 @@ def main():
     parser.add_argument('-m', '--max_words', type=int, default=7, help='Maximum number of words per chunk')
     parser.add_argument('-n', '--num_projects', type=int, default=None, help='max number of projects process')
     parser.add_argument('-d', '--duration', type=int, default=None, help='max duration in seconds for each file to extract(for testing)')
+    parser.add_argument('-f', '--filter', type=str, default=None, help='a filter on which projects to process by regex')
 
 
     args = parser.parse_args()
     nltk.download('punkt')
     nltk.download('punkt_tab')
 
-    projects = read_projects(args.project_csv_file)
+    projects = read_projects(args.project_csv_file, args.filter)
 
     if args.num_projects:
         projects = projects[:args.num_projects]
@@ -248,15 +252,24 @@ def main():
     # Note running twice will result
     if args.action in [Action.CREATE_PROJECT, Action.ALL]:
         for proj in projects:
-            create_project(proj)
+            try:
+                create_project(proj)
+            except Exception as e:
+                print(e)
 
     if args.action in [Action.EXTRACT_AUDIO, Action.ALL]:
         for proj in projects:
-            extract_audio(proj)
+            try:
+                extract_audio(proj)
+            except Exception as e:
+                print(e)
 
     if args.action in [Action.EXTRACT_SRT, Action.ALL]:
         for proj in projects:
-            extract_srt(proj, args.max_words)
+            try:
+                extract_srt(proj, args.max_words, args.duration)
+            except Exception as e:
+                print(e)
 
 if __name__ == '__main__':
     main()
