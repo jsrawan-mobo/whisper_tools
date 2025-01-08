@@ -1,6 +1,24 @@
 # Whisper tools
 These are tools that use whisper, ffmpeg etc to process foriegn language videos
 
+## Install brew and then install ffmpeg
+```
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+brew install FFmpeg
+brew install cmake
+```
+
+# Install Python Poetry Environment (2.0 version)
+```
+brew install pyenv
+pyenv install 3.12.7
+pyenv global 3.12.7
+poetry install
+poetry env activate
+```
+
+
+
 ## Compile and build Whisper.cpp
 ```
 git clone https://github.com/ggerganov/whisper.cpp
@@ -13,12 +31,6 @@ cmake --build build --config Release
 create a simlink so the main script can find main
 ```
 ln -s ./build/bin/whisper-cli main
-```
-
-## Install brew and then install ffmpeg
-```
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-brew install FFmpeg
 ```
 
 ## Create a CSV file to do conversion, example headers:
@@ -43,3 +55,8 @@ python whisper_output_splitter.py -a create_srt -m 5 -n 1 -d 60  -f "Irina"  -p 
 ### Translations are repeating over and over again.
 https://github.com/openai/whisper/discussions/81
 This happens when the model is unsure about the output (according to the compression_ratio_threshold and logprob_threshold settings). The most common failure mode is that it falls into a repeat loop, where it likely triggers the compression_ratio_threshold. The default setting tries temperatures 0, 0.2, 0.4, 0.6, 0.8, 1.0 until it gives up, at which it is less likely to be in a repeat loop but is also less likely to be correct.
+
+### Add library via poetry
+poetry add nltk
+poetry update
+poetry lock
