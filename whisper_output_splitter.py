@@ -209,12 +209,12 @@ def extract_audio(proj: Project) -> str:
     run_command_check(ffmpeg_2)
     return audio_path
 
-def extract_srt(proj: Project, max_words:int, duration:int):
+def extract_srt(proj: Project, max_words:int, duration:int, model_name):
     # Takes an audio file and create an optimized srt file
     project_audio_path = os.path.join(proj.output_path, proj.audio_file)
 
     duration_cmd = f"-d {duration * 1000}" if duration else ""
-    whisper_cmd = [f"./whisper.cpp/main -l en -lpt 2.0 -osrt -m ./whisper.cpp/models/ggml-large-v3.bin {duration_cmd }-f {project_audio_path}"]
+    whisper_cmd = [f"./whisper.cpp/main -l en -lpt 2.0 -osrt -m ./whisper.cpp/models/{model_name} {duration_cmd }-f {project_audio_path}"]
 
     run_command_check(whisper_cmd)
     audio_path = Path(project_audio_path)
@@ -227,8 +227,6 @@ def extract_srt(proj: Project, max_words:int, duration:int):
     with output_file_path.open('w') as output_file:
         output_file.write(file_output)
 
-
-
 def main():
     parser = argparse.ArgumentParser(description='Process a mpeg file source and creates a project file with SRT and AUDIO assests')
 
@@ -238,6 +236,8 @@ def main():
     parser.add_argument('-n', '--num_projects', type=int, default=None, help='max number of projects process')
     parser.add_argument('-d', '--duration', type=int, default=None, help='max duration in seconds for each file to extract(for testing)')
     parser.add_argument('-f', '--filter', type=str, default=None, help='a filter on which projects to process by regex')
+    parser.add_argument('-l', '--model', type=str, default="ggml-large-v3.bin", help='Pick model', required=False)
+
 
 
     args = parser.parse_args()
@@ -267,7 +267,7 @@ def main():
     if args.action in [Action.EXTRACT_SRT, Action.ALL]:
         for proj in projects:
             try:
-                extract_srt(proj, args.max_words, args.duration)
+                extract_srt(proj, args.max_words, args.duration, args.model)
             except Exception as e:
                 print(e)
 
