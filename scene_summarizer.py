@@ -1,5 +1,6 @@
 import argparse
 import os
+import pprint
 from os.path import join, dirname
 
 import pysrt
@@ -17,15 +18,6 @@ OPENAI_API_MODEL = os.environ.get("OPENAI_API_MODEL")
 print(OPENAI_API_KEY)
 print(OPENAI_API_MODEL)
 
-
-from whisper_output_splitter import read_projects, create_project, extract_audio, extract_srt
-
-def read_file(file_path):
-    with open(file_path, 'r') as file:
-        content = file.read()
-    return content
-
-
 def run_open_ai_completion_as_role(role="user", content="write a haiku about ai"):
     client = OpenAI()
     completion = client.chat.completions.create(
@@ -37,10 +29,7 @@ def run_open_ai_completion_as_role(role="user", content="write a haiku about ai"
     )
     print(completion.choices[0].message)
 
-
-
-
-def read_srt_file(file_path):
+def read_srt_file_segments(file_path):
     subs = pysrt.open(file_path)
     segments = []
 
@@ -54,8 +43,8 @@ def read_srt_file(file_path):
 
     return segments
 
-
-def analyze_emotions(text):
+def analyze_emotions(segments):
+    text = "\n".join([f"{seg['start_time']}: {seg['text']}" for seg in segments])
     prompt_text = (
         "Analyze the following text and identify emotional segments such as sadness, joy, fear, anger, and hope. "
         "Return only the emotional segments along with their corresponding emotions:\n\n"
@@ -73,50 +62,43 @@ def analyze_emotions(text):
     )
     return completion.choices[0].message
 
+def analyze_questions(segments):
+    text = "\n".join([f"{seg['start_time']}: {seg['text']}" for seg in segments])
+    prompt_text = (
+        "Analyze the following text and identify when a question is asked in the video and what the answer is?"
+        "Return the timestamp and the questions asked\n\n"
+        f"{text}"
+    )
+    client = OpenAI()
+    completion = client.chat.completions.create(
+        model=OPENAI_API_MODEL,
+        messages=[
+            {"role": "system", "content": "You are an transcription expert"},
+            {"role": "user", "content": prompt_text}
+        ],
+        max_tokens=500,
+        temperature=0.5
+    )
+    return completion.choices[0].message
 
-def load_srt_files_to_model(srt_folder_path, saved_model_name):
+# Function to generate an image using OpenAI API
+def generate_image_from_text(prompt_text, image_size="1024x1792"):
+    client = OpenAI()
+    response = client.images.generate(
+        api_key=OPENAI_API_KEY,
+        prompt=prompt_text,
+        n=1,
+        size=image_size
+    )
+    return response["data"][0]["url"]
+
+def load_srt_files_to_segments(srt_folder_path, saved_model_name):
     srt_files = [f for f in os.listdir(srt_folder_path) if f.endswith('.srt')]
     for srt_file in srt_files:
         srt_path = os.path.join(srt_folder_path, srt_file)
-        segments = read_srt_file(srt_path)
-
-        subtitle_text = "\n".join([f"{seg['start_time']}: {seg['text']}" for seg in segments])
-        emotional_segments = analyze_emotions(subtitle_text)
-        print("\nDetected Emotional Segments:\n", emotional_segments)
-
-        # Use OpenAI completions
-        client = OpenAI()
-        # completion = client.chat.completions.create(
-        #     model=OPENAI_API_MODEL,
-        #     store=True,
-        #     messages=[
-        #         {"role": "user", "content": "Can you load the SRT file which has 3 rows for #index#timestamp#text#"}
-        #     ]
-        # )
-        # print(completion.choices[0].message)
-
-        # file = client.files.create(file=open(srt_path, "rb"), purpose="batch")
-        #
-        # completion = client.chat.completions.create(
-        #     model=OPENAI_API_MODEL,
-        #     store=True,
-        #     messages=[
-        #         {"role": "system", "content": "You are assistant that can read and analyze this file SRT file which has 3 rows for #index#timestamp#text#"},
-        #         {"role": "user", "content": f"Load  {file.id}"}]
-        # )
-        # print(completion.choices[0].message)
-        break
-
-# # Function to generate an image using OpenAI API
-# def generate_image_from_text(api_key, prompt_text, image_size="1024x1792"):
-#     response = openai.Image.create(
-#         api_key=api_key,
-#         prompt=prompt_text,
-#         n=1,
-#         size=image_size
-#     )
-#     return response["data"][0]["url"]
-
+        segments = read_srt_file_segments(srt_path)
+        return segments
+        break #for now load the first file
 
 class Action(Enum):
     ALL = 'all'
@@ -124,7 +106,6 @@ class Action(Enum):
     INIT_GPT = 'init_gpt'
     EXTRACT_SCENE = 'extract_scene'
     ASK_QUESTION = 'ask_question'
-
 
 def main():
     parser = argparse.ArgumentParser(description='Process a mpeg file source and creates a project file with SRT and AUDIO assests')
@@ -138,7 +119,11 @@ def main():
     if args.action in [Action.LOAD_SRT]:
             try:
                 #run_open_ai_completion_as_role()
-                load_srt_files_to_model(args.folder, args.model)
+                segments = load_srt_files_to_segments(args.folder, args.model)
+                emotional_segments = analyze_questions(segments)
+                print("\nDetected Emotional Segments:\n")
+                pprint.pprint(emotional_segments.to_dict()['content'])
+
 
             except Exception as e:
                 print(e)
