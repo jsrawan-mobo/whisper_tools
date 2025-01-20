@@ -63,10 +63,10 @@ def analyze_emotions(segments):
     return completion.choices[0].message
 
 def analyze_questions(segments):
-    text = "\n".join([f"{seg['start_time']}: {seg['text']}" for seg in segments])
+    text = "\n".join([f"{seg['start_time']} --> {seg['end_time']}: {seg['text']}" for seg in segments])
     prompt_text = (
         "Analyze the following text and identify when a question is asked in the video and what the answer is?"
-        "Return the timestamp and the questions asked\n\n"
+        "Return the start and end time and the questions asked\n\n"
         f"{text}"
     )
     client = OpenAI()
