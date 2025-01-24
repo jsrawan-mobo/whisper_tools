@@ -62,11 +62,10 @@ def analyze_emotions(segments):
     )
     return completion.choices[0].message
 
-def analyze_questions(segments):
+def analyze_questions(segments, question):
     text = "\n".join([f"{seg['start_time']} --> {seg['end_time']}: {seg['text']}" for seg in segments])
     prompt_text = (
-        "Analyze the following text and identify when a question is asked in the video and what the answer is?"
-        "Return the start and end time and the questions asked\n\n"
+       f"{question}",
         f"{text}"
     )
     client = OpenAI()
@@ -115,9 +114,32 @@ def main():
     parser.add_argument('-p', '--prompt', type=int, help='The prompt number to run', required=False)
 
 ## add argument that pastes in a prompt number and run that prompt
-## arugment: -p 1 or -p 2
-## put  in array called prompts
+## arguments: -p 1 or -p 2
+## put in array called prompts
 ## help command
+## create question, create a function "I want to ask prompt 1" and run that prompt (ending with :question= )
+
+    prompts = [
+        "What is the meaning of life?",
+        "Describe the process of photosynthesis.",
+        "Explain the theory of relativity.",
+        "What are the benefits of exercise?",
+        "How does the internet work?",
+        "What is quantum computing?",
+        "Describe the history of the Roman Empire.",
+        "What are the effects of climate change?",
+        "Explain the concept of artificial intelligence.",
+        "What is the importance of sleep?"
+    ]
+
+    def print_prompts():
+        for index, prompt in enumerate(prompts):
+            print(f"{index}: {prompt}")
+
+    print_prompts()
+
+
+    question=" "
 
 
     args = parser.parse_args()
@@ -137,7 +159,7 @@ def main():
     if args.action in [Action.ASK_QUESTION]:
         try:
             segments = load_srt_files_to_segments(args.folder, args.model)
-            qa_segments = analyze_questions(segments)
+            qa_segments = analyze_questions(segments,question)
             print("\nQuestions and Answers Detected:\n")
             pprint.pprint(qa_segments)
         except Exception as e:
