@@ -116,7 +116,7 @@ def main():
 
 ## add argument that pastes in a prompt number and run that prompt
 ## arugment: -p 1 or -p 2
-## put in array called prompts
+## put  in array called prompts
 ## help command
 
 
