@@ -69,6 +69,7 @@ def analyze_questions(segments, question):
     prompt_text = (
        f"{question}",
         f"{text}"
+
     )
     client = OpenAI()
     completion = client.chat.completions.create(
