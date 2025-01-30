@@ -64,6 +64,8 @@ def analyze_emotions(segments):
 
 def analyze_questions(segments, question):
     text = "\n".join([f"{seg['start_time']} --> {seg['end_time']}: {seg['text']}" for seg in segments])
+    ##print(text)
+    print(question)
     prompt_text = (
        f"{question}",
         f"{text}"
@@ -73,11 +75,13 @@ def analyze_questions(segments, question):
         model=OPENAI_API_MODEL,
         messages=[
             {"role": "system", "content": "You are an transcription expert"},
-            {"role": "user", "content": prompt_text}
+            {"role": "user", "content": question}
         ],
         max_tokens=500,
         temperature=0.5
     )
+    ##print(completion.choices[0].message)
+    print(completion.choices[0].message)
     return completion.choices[0].message
 
 # Function to generate an image using OpenAI API
@@ -119,6 +123,11 @@ def main():
 ## help command
 ## create question, create a function "I want to ask prompt 1" and run that prompt (ending with :question= )
 
+
+    ## input from user
+    askPrompts = input("choose a prompt number:")
+
+
     prompts = [
         "What is the meaning of life?",
         "Describe the process of photosynthesis.",
@@ -155,16 +164,24 @@ def main():
         except Exception as e:
             print(e)
 
-    ## if ali.action
-    if args.action in [Action.ASK_QUESTION]:
-        try:
-            segments = load_srt_files_to_segments(args.folder, args.model)
-            qa_segments = analyze_questions(segments,question)
-            print("\nQuestions and Answers Detected:\n")
-            pprint.pprint(qa_segments)
-        except Exception as e:
-            print(f"Error during ASK_QUESTION: {e}")
+    # if ali.action
+    # if args.action in [Action.ASK_QUESTION]:
+    #     try:
+    #         segments = load_srt_files_to_segments(args.folder, args.model)
+    #         qa_segments = analyze_questions(segments,question)
+    #         print("\nQuestions and Answers Detected:\n")
+    #         pprint.pprint(qa_segments)
+    #     except Exception as e:
+    #         print(f"Error during ASK_QUESTION: {e}")
 
+# If user inputs a prompt number, replace the question with the prompt number in the array
+    try:
+        segments = load_srt_files_to_segments(args.folder, args.model)
+        qa_segments = analyze_questions(segments, prompts[int(askPrompts)])
+        print("\nQuestions and Answers Detected:\n")
+        pprint.pprint(qa_segments)
+    except Exception as e:
+        print(f"Error during ASK_QUESTION: {e}")
 
 
 
