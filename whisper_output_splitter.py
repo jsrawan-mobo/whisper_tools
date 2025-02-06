@@ -172,7 +172,7 @@ def get_project_names(project_csv_path, source_mpeg_folder, source_mpeg_name, su
     return source_mpeg_path, project_output_dir, project_mpeg_file, project_audio_file, project_srt_file
 
 
-def read_projects(project_csv_path, filter_proj=None):
+def read_projects(project_csv_path, filter_proj=None, output_dir_override=None) -> List[Project]:
     # Open CSV with columns Source_File_Path	Source_File_Name	Subject_Name	Subject_Tag	Campaign
     # Read each row and create a project folder with the following structure:
     projects = []
@@ -183,10 +183,16 @@ def read_projects(project_csv_path, filter_proj=None):
             source_mpeg_folder, source_mpeg_name, subject_name, subject_tag, campaign = row
             (source_mpeg_path, project_output_dir, project_mpeg_file, project_audio_file, project_srt_file) = get_project_names(
                 project_csv_path, source_mpeg_folder, source_mpeg_name, subject_name, subject_tag, campaign)
+
+            final_output_dir = project_output_dir
+            if output_dir_override:
+                base_folder = os.path.dirname(project_output_dir)
+                print(base_folder)
+                final_output_dir = os.path.join(base_folder,output_dir_override)
             if source_mpeg_path == "":
                 continue
             if not filter_proj or re.search(filter_proj, project_output_dir):
-                projects.append(Project(source_mpeg_path, project_output_dir, project_mpeg_file, project_audio_file, project_srt_file))
+                projects.append(Project(source_mpeg_path, final_output_dir, project_mpeg_file, project_audio_file, project_srt_file))
 
     return projects
 
@@ -237,6 +243,7 @@ def main():
     parser.add_argument('-d', '--duration', type=int, default=None, help='max duration in seconds for each file to extract(for testing)')
     parser.add_argument('-f', '--filter', type=str, default=None, help='a filter on which projects to process by regex')
     parser.add_argument('-l', '--model', type=str, default="ggml-large-v3.bin", help='Pick model', required=False)
+    parser.add_argument('-o', '--output_dirname_override', type=str, default=None, help='OVERRIDE ALL to be in a single folder', required=False)
 
 
 
@@ -244,7 +251,7 @@ def main():
     nltk.download('punkt')
     nltk.download('punkt_tab')
 
-    projects = read_projects(args.project_csv_file, args.filter)
+    projects = read_projects(args.project_csv_file, args.filter, args.output_dirname_override)
 
     if args.num_projects:
         projects = projects[:args.num_projects]
