@@ -32,9 +32,6 @@ def list_shared_drives(service) -> Dict[str, Dict]:
             name = drive.get('name')
             # print("Name: {0}, ID: {1}".format(name, drive.get('id')))
             drives_dict[name] = drive
-
-
-
         page_token = response.get('nextPageToken', None)
         if not page_token:
             break
@@ -74,10 +71,39 @@ def get_all_folders(service, shared_drive_id):
     return all_folders
 
 
-def get_files_from_folder(service, shared_drive_id, folder_id):
+def list_comments(service, file_id):
+    """
+    Lists all comments on the file specified by file_id.
+
+    Args:
+        service: Authorized Google Drive API service instance.
+        file_id: The ID of the file to retrieve comments from.
+    """
+    page_token = None
+    all_comments = []
+    while True:
+        response = service.comments().list(
+            fileId=file_id,
+            pageToken=page_token,
+            fields="nextPageToken, comments(id, content, createdTime, author(displayName))"
+        ).execute()
+
+        comments = response.get('comments', [])
+        if not comments:
+            break
+        all_comments.extend(comments)
+
+        page_token = response.get("nextPageToken")
+        if not page_token:
+            break
+
+    return comments
+
+def get_files_from_folder(service, shared_drive_id, folder_id) -> Dict:
     query = f"'{folder_id}' in parents"
     print(query)
     page_token = None
+    all_files = {}
     while True:
         response = service.files().list(
             corpora='drive',  # Querying within a Shared Drive
@@ -96,10 +122,12 @@ def get_files_from_folder(service, shared_drive_id, folder_id):
         else:
             for item in items:
                 print(f"Name: {item.get('name')}, ID: {item.get('id')}, {item.get('Comment')}")
+                all_files[item.get('name')] = item
 
         page_token = response.get('nextPageToken')
         if not page_token:
             break
+    return all_files
 
 def main():
     """Shows basic usage of the Drive v3 API.
@@ -133,7 +161,16 @@ def main():
     shared_drive_id = drives_dict[shared_drive_name].get('id')
     all_folders = get_all_folders(service, shared_drive_id)
     folder_id = all_folders['20250116_UkraineDeputy'].get('id')
-    get_files_from_folder(service, shared_drive_id, folder_id)
+    all_files = get_files_from_folder(service, shared_drive_id, folder_id)
+
+    for name, file in all_files.items():
+        comments = list_comments(service, file.get("id"))
+        for comment in comments:
+            author = comment.get("author", {})
+            print(f"{name} Author: {author.get("displayName", "Unknown")}, {comment.get("content")}")
+            # print("Content:", comment.get("content"))
+            #print("Created Time:", comment.get("createdTime"))
+            #print("-" * 40)
 
     # You can set up a query to list files that are within a specific folder.
     # The query "'<folder_id>' in parents" will list files whose parent is that folder.
