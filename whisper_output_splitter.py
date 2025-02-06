@@ -203,8 +203,8 @@ def extract_audio(proj: Project) -> str:
     mpeg_path = os.path.join(proj.output_path, proj.mpeg_file)
     audio_aac_path = os.path.join(proj.output_path, f"{audio_name}.aac")
     audio_path = os.path.join(proj.output_path, proj.audio_file)
-    ffmpeg_1 = f"ffmpeg -y -i {mpeg_path} -vn -acodec copy {audio_aac_path}"
-    ffmpeg_2 = f"ffmpeg -y -i {audio_aac_path} -acodec pcm_s16le -ar 16000 {audio_path}"
+    ffmpeg_1 = f"ffmpeg -y -i \"{mpeg_path}\" -vn -acodec copy \"{audio_aac_path}\""
+    ffmpeg_2 = f"ffmpeg -y -i \"{audio_aac_path}\" -acodec pcm_s16le -ar 16000 \"{audio_path}\""
     run_command_check(ffmpeg_1)
     run_command_check(ffmpeg_2)
     return audio_path
@@ -214,7 +214,7 @@ def extract_srt(proj: Project, max_words:int, duration:int, model_name):
     project_audio_path = os.path.join(proj.output_path, proj.audio_file)
 
     duration_cmd = f"-d {duration * 1000}" if duration else ""
-    whisper_cmd = [f"./whisper.cpp/main -l en -lpt 2.0 -osrt -m ./whisper.cpp/models/{model_name} {duration_cmd }-f {project_audio_path}"]
+    whisper_cmd = [f"./whisper.cpp/main -l en -lpt 2.0 -osrt -m ./whisper.cpp/models/{model_name} {duration_cmd }-f \"{project_audio_path}\""]
 
     run_command_check(whisper_cmd)
     audio_path = Path(project_audio_path)

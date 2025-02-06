@@ -92,13 +92,14 @@ def generate_image_from_text(prompt_text, image_size="1024x1792"):
     )
     return response["data"][0]["url"]
 
-def load_srt_files_to_segments(srt_folder_path, saved_model_name):
+def load_srt_files_to_segments(srt_folder_path, number):
     srt_files = [f for f in os.listdir(srt_folder_path) if f.endswith('.srt')]
+    if number:
+        srt_files = srt_files[0:number]
     for srt_file in srt_files:
         srt_path = os.path.join(srt_folder_path, srt_file)
         segments = read_srt_file_segments(srt_path)
         return segments
-        break #for now load the first file
 
 class Action(Enum):
     ALL = 'all'
@@ -113,10 +114,14 @@ def main():
     parser.add_argument('-f', '--folder', type=str, help='The path to the SRT files', required=True)
     parser.add_argument('-l', '--model', type=str, default="srt_scenes_model_v1", help='GPT Model to load or init', required=False)
     parser.add_argument('-p', '--prompt', type=int, help='The prompt number to run', required=False)
+    parser.add_argument('-n', '--number', type=int, help='Max number of transcripts to import', required=False, default=None)
+
+
 
 ## add argument that pastes in a prompt number and run that prompt
 ## arugment: -p 1 or -p 2
-## put  in array called prompts
+## create an array called prompt
+## print out the prompt and its array index
 ## help command
 
 
@@ -126,7 +131,7 @@ def main():
     if args.action in [Action.LOAD_SRT]:
         try:
             #run_open_ai_completion_as_role()
-            segments = load_srt_files_to_segments(args.folder, args.model)
+            segments = load_srt_files_to_segments(args.folder, args.number)
             emotional_segments = analyze_questions(segments)
             print("\nDetected Emotional Segments:\n")
             pprint.pprint(emotional_segments.to_dict()['content'])
