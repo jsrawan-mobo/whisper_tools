@@ -1,6 +1,7 @@
 from __future__ import print_function
 import os.path
 import pickle
+from typing import Dict
 
 from google.auth.transport.requests import Request
 from google_auth_oauthlib.flow import InstalledAppFlow
@@ -10,10 +11,11 @@ from googleapiclient.discovery import build
 SCOPES = ['https://www.googleapis.com/auth/drive.metadata.readonly',
           'https://www.googleapis.com/auth/drive.readonly']
 
-def list_shared_drives(service):
+def list_shared_drives(service) -> Dict[str, Dict]:
     """Lists all Shared Drives and prints their names and IDs."""
     page_token = None
-    print("Shared Drives:")
+    # print("Shared Drives:")
+    drives_dict = {}
     while True:
         response = service.drives().list(
             pageSize=100,  # Adjust the page size if needed
@@ -27,12 +29,77 @@ def list_shared_drives(service):
             return
 
         for drive in drives:
-            print("Name: {0}, ID: {1}".format(drive.get('name'), drive.get('id')))
+            name = drive.get('name')
+            # print("Name: {0}, ID: {1}".format(name, drive.get('id')))
+            drives_dict[name] = drive
+
+
 
         page_token = response.get('nextPageToken', None)
         if not page_token:
             break
+    return drives_dict
 
+def get_all_folders(service, shared_drive_id):
+    query = "mimeType = 'application/vnd.google-apps.folder' and trashed = false"
+    page_token = None
+
+    # print("Folders in Google Drive: {drive_id}")
+    all_folders = {}
+    while True:
+        response = service.files().list(
+            corpora='drive',  # Querying within a Shared Drive
+            driveId=shared_drive_id,  # Specify the Shared Drive I
+            includeItemsFromAllDrives=True,  # Include files from shared drives
+            supportsAllDrives=True,  # Ensure the API call supports shared drive
+            q=query,
+            spaces='drive',
+            fields="nextPageToken, files(id, name)",
+            pageToken=page_token
+        ).execute()
+
+        folders = response.get('files', [])
+        if not folders:
+            print("No folders found.")
+            break
+
+        for folder in folders:
+            name = folder.get('name')
+            # print("Folder: {0} (ID: {1})".format(folder.get('name'), folder.get('id')))
+            all_folders[name] = folder
+
+        page_token = response.get('nextPageToken', None)
+        if not page_token:
+            break
+    return all_folders
+
+
+def get_files_from_folder(service, shared_drive_id, folder_id):
+    query = f"'{folder_id}' in parents"
+    print(query)
+    page_token = None
+    while True:
+        response = service.files().list(
+            corpora='drive',  # Querying within a Shared Drive
+            driveId=shared_drive_id,  # Specify the Shared Drive ID
+            includeItemsFromAllDrives=True,  # Include files from shared drives
+            supportsAllDrives=True,  # Ensure the API call supports shared drives
+            q=query,  # Filter by the parent folder
+            fields="nextPageToken, files(id, name)",
+            pageToken=page_token,
+            pageSize=100  # Adjust page size as needed
+        ).execute()
+
+        items = response.get('files', [])
+        if not items:
+            print('No files found in the specified folder.')
+        else:
+            for item in items:
+                print(f"Name: {item.get('name')}, ID: {item.get('id')}, {item.get('Comment')}")
+
+        page_token = response.get('nextPageToken')
+        if not page_token:
+            break
 
 def main():
     """Shows basic usage of the Drive v3 API.
@@ -60,38 +127,17 @@ def main():
     # Build the Drive service.
     service = build('drive', 'v3', credentials=creds)
 
-    list_shared_drives(service)
+    drives_dict = list_shared_drives(service)
 
-    shared_drive_id = '0AKsYb91iiQ5SUk9PVA' #Hfunds Marketing
-    folder_id = ''  # For example, the folder you want to list files from
+    shared_drive_name = 'HFundsMarketing' #Hfunds Marketing
+    shared_drive_id = drives_dict[shared_drive_name].get('id')
+    all_folders = get_all_folders(service, shared_drive_id)
+    folder_id = all_folders['20250116_UkraineDeputy'].get('id')
+    get_files_from_folder(service, shared_drive_id, folder_id)
 
     # You can set up a query to list files that are within a specific folder.
     # The query "'<folder_id>' in parents" will list files whose parent is that folder.
-    query = f"'{folder_id}' in parents"
 
-    page_token = None
-    while True:
-        response = service.files().list(
-            corpora='drive',  # Querying within a Shared Drive
-            driveId=shared_drive_id,  # Specify the Shared Drive ID
-            includeItemsFromAllDrives=True,  # Include files from shared drives
-            supportsAllDrives=True,  # Ensure the API call supports shared drives
-            q=query,  # Filter by the parent folder
-            fields="nextPageToken, files(id, name)",
-            pageToken=page_token,
-            pageSize=100  # Adjust page size as needed
-        ).execute()
-
-        items = response.get('files', [])
-        if not items:
-            print('No files found in the specified folder.')
-        else:
-            for item in items:
-                print(f"Name: {item.get('name')}, ID: {item.get('id')}")
-
-        page_token = response.get('nextPageToken')
-        if not page_token:
-            break
 
 
     # # Call the Drive v3 API to list files.
