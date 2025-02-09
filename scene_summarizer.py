@@ -64,19 +64,16 @@ def analyze_emotions(segments):
 
 def analyze_questions(segments, question):
     text = "\n".join([f"{seg['start_time']} --> {seg['end_time']}: {seg['text']}" for seg in segments])
-    ##print(text)
-    print(question)
     prompt_text = (
        f"{question}",
         f"{text}"
-
     )
     client = OpenAI()
     completion = client.chat.completions.create(
         model=OPENAI_API_MODEL,
         messages=[
             {"role": "system", "content": "You are an transcription expert"},
-            {"role": "user", "content": question}
+            {"role": "user", "content": prompt_text}
         ],
         max_tokens=500,
         temperature=0.5
@@ -129,33 +126,19 @@ def main():
 ## create question, create a function "I want to ask prompt 1" and run that prompt (ending with :question= )
 
 
-    ## input from user
-    askPrompts = input("choose a prompt number:")
+
 
 
     prompts = [
-        "What is the meaning of life?",
-        "Describe the process of photosynthesis.",
-        "Explain the theory of relativity.",
-        "What are the benefits of exercise?",
-        "How does the internet work?",
-        "What is quantum computing?",
-        "Describe the history of the Roman Empire.",
-        "What are the effects of climate change?",
-        "Explain the concept of artificial intelligence.",
-        "What is the importance of sleep?"
+        "Can you identify when a question is asked in the video and what the answer is.\n\n"
     ]
 
     def print_prompts():
         for index, prompt in enumerate(prompts):
             print(f"{index}: {prompt}")
 
-    print_prompts()
 
-
-    question=" "
-
-
+    ## input from user
     args = parser.parse_args()
 
     # Note running twice will result
@@ -163,7 +146,7 @@ def main():
         try:
             #run_open_ai_completion_as_role()
             segments = load_srt_files_to_segments(args.folder, args.number)
-            emotional_segments = analyze_questions(segments)
+            emotional_segments = analyze_emotions(segments)
             print("\nDetected Emotional Segments:\n")
             pprint.pprint(emotional_segments.to_dict()['content'])
         except Exception as e:
@@ -181,6 +164,9 @@ def main():
 
 # If user inputs a prompt number, replace the question with the prompt number in the array
     try:
+        askPrompts = input("choose a prompt number:")
+        print_prompts()
+
         segments = load_srt_files_to_segments(args.folder, args.number)
         qa_segments = analyze_questions(segments, prompts[int(askPrompts)])
         print("\nQuestions and Answers Detected:\n")
