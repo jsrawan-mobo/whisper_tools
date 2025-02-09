@@ -62,23 +62,27 @@ def analyze_emotions(segments):
     )
     return completion.choices[0].message
 
-def analyze_questions(segments):
+def analyze_questions(segments, question):
     text = "\n".join([f"{seg['start_time']} --> {seg['end_time']}: {seg['text']}" for seg in segments])
+    ##print(text)
+    print(question)
     prompt_text = (
-        "Analyze the following text and identify when a question is asked in the video and what the answer is?"
-        "Return the start and end time and the questions asked\n\n"
+       f"{question}",
         f"{text}"
+
     )
     client = OpenAI()
     completion = client.chat.completions.create(
         model=OPENAI_API_MODEL,
         messages=[
             {"role": "system", "content": "You are an transcription expert"},
-            {"role": "user", "content": prompt_text}
+            {"role": "user", "content": question}
         ],
         max_tokens=500,
         temperature=0.5
     )
+    ##print(completion.choices[0].message)
+    print(completion.choices[0].message)
     return completion.choices[0].message
 
 # Function to generate an image using OpenAI API
@@ -119,10 +123,37 @@ def main():
 
 
 ## add argument that pastes in a prompt number and run that prompt
-## arugment: -p 1 or -p 2
-## create an array called prompt
-## print out the prompt and its array index
+## arguments: -p 1 or -p 2
+## put in array called prompts
 ## help command
+## create question, create a function "I want to ask prompt 1" and run that prompt (ending with :question= )
+
+
+    ## input from user
+    askPrompts = input("choose a prompt number:")
+
+
+    prompts = [
+        "What is the meaning of life?",
+        "Describe the process of photosynthesis.",
+        "Explain the theory of relativity.",
+        "What are the benefits of exercise?",
+        "How does the internet work?",
+        "What is quantum computing?",
+        "Describe the history of the Roman Empire.",
+        "What are the effects of climate change?",
+        "Explain the concept of artificial intelligence.",
+        "What is the importance of sleep?"
+    ]
+
+    def print_prompts():
+        for index, prompt in enumerate(prompts):
+            print(f"{index}: {prompt}")
+
+    print_prompts()
+
+
+    question=" "
 
 
     args = parser.parse_args()
@@ -138,16 +169,24 @@ def main():
         except Exception as e:
             print(e)
 
-    ## if ali.action
-    if args.action in [Action.ASK_QUESTION]:
-        try:
-            segments = load_srt_files_to_segments(args.folder, args.model)
-            qa_segments = analyze_questions(segments)
-            print("\nQuestions and Answers Detected:\n")
-            pprint.pprint(qa_segments)
-        except Exception as e:
-            print(f"Error during ASK_QUESTION: {e}")
+    # if ali.action
+    # if args.action in [Action.ASK_QUESTION]:
+    #     try:
+    #         segments = load_srt_files_to_segments(args.folder, args.model)
+    #         qa_segments = analyze_questions(segments,question)
+    #         print("\nQuestions and Answers Detected:\n")
+    #         pprint.pprint(qa_segments)
+    #     except Exception as e:
+    #         print(f"Error during ASK_QUESTION: {e}")
 
+# If user inputs a prompt number, replace the question with the prompt number in the array
+    try:
+        segments = load_srt_files_to_segments(args.folder, args.model)
+        qa_segments = analyze_questions(segments, prompts[int(askPrompts)])
+        print("\nQuestions and Answers Detected:\n")
+        pprint.pprint(qa_segments)
+    except Exception as e:
+        print(f"Error during ASK_QUESTION: {e}")
 
 
 
