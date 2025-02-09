@@ -181,17 +181,20 @@ def main():
 
 # If user inputs a prompt number, replace the question with the prompt number in the array
     try:
-        segments = load_srt_files_to_segments(args.folder, args.model)
+        segments = load_srt_files_to_segments(args.folder, args.number)
         qa_segments = analyze_questions(segments, prompts[int(askPrompts)])
         print("\nQuestions and Answers Detected:\n")
         pprint.pprint(qa_segments)
     except Exception as e:
+        import traceback
+        print(traceback.format_exc())
+        print(Exception, e)
         print(f"Error during ASK_QUESTION: {e}")
 
 
 
-    if args.action in [Action.ASK_QUESTION]:
-        pass
+    # if args.action in [Action.ASK_QUESTION]:
+    #     pass
 
 
 
