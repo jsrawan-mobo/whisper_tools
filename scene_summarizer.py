@@ -82,7 +82,7 @@ def analyze_questions(segments, question):
         temperature=0.5
     )
     ##print(completion.choices[0].message)
-    print(completion.choices[0].message)
+    print(completion.choices[0].message.content)
     return completion.choices[0].message
 
 # Function to generate an image using OpenAI API
