@@ -63,7 +63,8 @@ def analyze_emotions(segments):
     return completion.choices[0].message
 
 def analyze_questions(segments, question):
-    text = "\n".join([f"{seg['start_time']} --> {seg['end_time']}: {seg['text']}" for seg in segments])
+    # text = "\n".join([f"{seg['start_time']} --> {seg['end_time']}: {seg['text']}" for seg in segments])
+    text = "\n".join([f"{seg['start_time']}: {seg['text']}" for seg in segments])
     prompt_text = (
        f"{question}",
         f"{text}"
@@ -79,8 +80,9 @@ def analyze_questions(segments, question):
         temperature=0.5
     )
     ##print(completion.choices[0].message)
-    print(completion.choices[0].message.content)
-    return completion.choices[0].message
+    print(completion.choices[0])
+    # print(completion.choices[0].message.content)
+    # return completion.choices[0].message
 
 # Function to generate an image using OpenAI API
 def generate_image_from_text(prompt_text, image_size="1024x1792"):
