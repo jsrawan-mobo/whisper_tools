@@ -184,7 +184,7 @@ def main():
         segments = load_srt_files_to_segments(args.folder, args.number)
         qa_segments = analyze_questions(segments, prompts[int(askPrompts)])
         print("\nQuestions and Answers Detected:\n")
-        pprint.pprint(qa_segments)
+        # pprint.pprint(qa_segments)
     except Exception as e:
         import traceback
         print(traceback.format_exc())
