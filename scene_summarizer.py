@@ -63,10 +63,10 @@ def analyze_emotions(segments):
     return completion.choices[0].message
 
 def analyze_questions(segments, question):
-    # text = "\n".join([f"{seg['start_time']} --> {seg['end_time']}: {seg['text']}" for seg in segments])
-    text = "\n".join([f"{seg['start_time']}: {seg['text']}" for seg in segments])
+    text = "\n".join([f"{seg['start_time']} --> {seg['end_time']}: {seg['text']}" for seg in segments])
+    # text = "\n".join([f"{seg['start_time']}: {seg['text']}" for seg in segments])
     prompt_text = (
-       f"{question}",
+       f"{question}"
         f"{text}"
     )
     client = OpenAI()
@@ -80,8 +80,8 @@ def analyze_questions(segments, question):
         temperature=0.5
     )
     ##print(completion.choices[0].message)
-    print(completion.choices[0])
-    # print(completion.choices[0].message.content)
+    # print(completion.choices[0])
+    print(completion.choices[0].message.content)
     # return completion.choices[0].message
 
 # Function to generate an image using OpenAI API
@@ -127,14 +127,10 @@ def main():
 ## help command
 ## create question, create a function "I want to ask prompt 1" and run that prompt (ending with :question= )
 
-
-
-
-
     prompts = [
-        "Can you identify when a question is asked in the video and what the answer is.\n\n"
+        "Can you identify when a question is asked in the script and what the answer is.\n\n"
+        "Format the output with timestamp\nQuestion: Answer: \n\n"
     ]
-
     def print_prompts():
         for index, prompt in enumerate(prompts):
             print(f"{index}: {prompt}")
