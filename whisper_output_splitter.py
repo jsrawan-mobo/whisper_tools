@@ -222,7 +222,8 @@ def extract_srt(proj: Project, duration:int, model_name):
     project_audio_path = os.path.join(proj.output_path, proj.audio_file)
 
     duration_cmd = f"-d {duration * 1000}" if duration else ""
-    whisper_cmd = [f"./whisper.cpp/main -l en -lpt 2.0 -osrt -m ./whisper.cpp/models/{model_name} {duration_cmd }-f \"{project_audio_path}\""]
+    whisper_cmd = [f"./whisper.cpp/main -l en -lpt 2.0 -osrt -m ./whisper.cpp/models/{model_name} {duration_cmd} -f \"{project_audio_path}\""]
+    print(whisper_cmd)
 
     run_command_check(whisper_cmd)
     audio_path = Path(project_audio_path)

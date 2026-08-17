@@ -19,9 +19,10 @@ poetry env activate
 
 
 
-## Compile and build Whisper.cpp
+## Compile and build Whisper.cpp (Jan 2025)
 ```
 git clone https://github.com/ggerganov/whisper.cpp
+git checkout fb36a1538a8a74921bd64d69c03baadb54217648
 cd whisper.cpp
 cmake -B build
 cmake --build build --config Release
