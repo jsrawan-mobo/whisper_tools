@@ -16,7 +16,7 @@ from nltk.tokenize import sent_tokenize, word_tokenize
 
 
 
-Project = namedtuple('Project', ['source_mpeg_path', 'output_path', 'mpeg_file', 'audio_file', 'srt_file'])
+Project = namedtuple('Project', ['source_mpeg_path', 'output_path', 'mpeg_file', 'audio_file', 'srt_file', 'optimized_srt'])
 
 
 class Action(Enum):
@@ -24,6 +24,8 @@ class Action(Enum):
     CREATE_PROJECT = 'create_project'
     EXTRACT_AUDIO = 'extract_audio'
     EXTRACT_SRT = 'extract_srt'
+    OPTIMIZE_SRT = 'optimize_srt'
+
 
 def convert_srt_time_to_seconds(srt_time) -> float:
     hours, minutes, seconds, milliseconds = map(float, re.split('[:,]', srt_time))
@@ -99,7 +101,6 @@ def split_text_into_chunks(text, total_duration):
 def split_transcript(transcript, max_words=7) -> str:
     # Extract start and end times from the transcript
     # times = re.search(r'\[(.*?) --> (.*?)\]', transcript)
-
     pattern = re.compile(r'(\d+)\n(\d{2}:\d{2}:\d{2},\d{3}) --> (\d{2}:\d{2}:\d{2},\d{3})\n(.*)', re.MULTILINE )
     matches = pattern.findall(transcript)
     if not matches:
@@ -168,8 +169,9 @@ def get_project_names(project_csv_path, source_mpeg_folder, source_mpeg_name, su
     project_output_dir = os.path.join(os.path.dirname(project_csv_path), f"{file_date}_{subject_tag}_{subject_name}_{campaign}")
     project_mpeg_file = f"{subject_name}_{subject_tag}.mp4"
     project_audio_file = f"{subject_name}_{subject_tag}.wav"
-    project_srt_file = f"{subject_name}_{subject_tag}.srt"
-    return source_mpeg_path, project_output_dir, project_mpeg_file, project_audio_file, project_srt_file
+    project_srt_file = f"{subject_name}_{subject_tag}.wav.srt"
+    project_optimized_srt_file = f"{subject_name}_{subject_tag}.wav_optimized.srt"
+    return source_mpeg_path, project_output_dir, project_mpeg_file, project_audio_file, project_srt_file, project_optimized_srt_file
 
 
 def read_projects(project_csv_path, filter_proj=None, output_dir_override=None) -> List[Project]:
@@ -181,7 +183,7 @@ def read_projects(project_csv_path, filter_proj=None, output_dir_override=None) 
         next(csv_reader, None) #header
         for row in csv_reader:
             source_mpeg_folder, source_mpeg_name, subject_name, subject_tag, campaign = row
-            (source_mpeg_path, project_output_dir, project_mpeg_file, project_audio_file, project_srt_file) = get_project_names(
+            (source_mpeg_path, project_output_dir, project_mpeg_file, project_audio_file, project_srt_file, project_optimized_srt) = get_project_names(
                 project_csv_path, source_mpeg_folder, source_mpeg_name, subject_name, subject_tag, campaign)
 
             final_output_dir = project_output_dir
@@ -192,7 +194,7 @@ def read_projects(project_csv_path, filter_proj=None, output_dir_override=None) 
             if source_mpeg_path == "":
                 continue
             if not filter_proj or re.search(filter_proj, project_output_dir):
-                projects.append(Project(source_mpeg_path, final_output_dir, project_mpeg_file, project_audio_file, project_srt_file))
+                projects.append(Project(source_mpeg_path, final_output_dir, project_mpeg_file, project_audio_file, project_srt_file, project_optimized_srt))
 
     return projects
 
@@ -215,7 +217,7 @@ def extract_audio(proj: Project) -> str:
     run_command_check(ffmpeg_2)
     return audio_path
 
-def extract_srt(proj: Project, max_words:int, duration:int, model_name):
+def extract_srt(proj: Project, duration:int, model_name):
     # Takes an audio file and create an optimized srt file
     project_audio_path = os.path.join(proj.output_path, proj.audio_file)
 
@@ -225,11 +227,14 @@ def extract_srt(proj: Project, max_words:int, duration:int, model_name):
     run_command_check(whisper_cmd)
     audio_path = Path(project_audio_path)
     srt_file_path = f"{audio_path}.srt"
+    return srt_file_path
+
+def optimize_srt(proj: Project, max_words: int):
+    srt_file_path = os.path.join(proj.output_path, proj.srt_file)
     file_content = read_file(srt_file_path)
     file_output = split_transcript(file_content, max_words=max_words)
 
-    output_file_path = Path(srt_file_path)
-    output_file_path = output_file_path.with_name(output_file_path.stem + '_optimized.srt')
+    output_file_path = Path(os.path.join(proj.output_path, proj.optimized_srt))
     with output_file_path.open('w') as output_file:
         output_file.write(file_output)
 
@@ -263,6 +268,7 @@ def main():
                 create_project(proj)
             except Exception as e:
                 print(e)
+        print("+++CREATE_PROJECT done")
 
     if args.action in [Action.EXTRACT_AUDIO, Action.ALL]:
         for proj in projects:
@@ -270,13 +276,25 @@ def main():
                 extract_audio(proj)
             except Exception as e:
                 print(e)
+        print("+++EXTRACT_AUDIO done")
 
     if args.action in [Action.EXTRACT_SRT, Action.ALL]:
         for proj in projects:
             try:
-                extract_srt(proj, args.max_words, args.duration, args.model)
+                extract_srt(proj, args.duration, args.model)
             except Exception as e:
                 print(e)
+        print("+++EXTRACT_SRT done")
+
+
+    if args.action in [Action.OPTIMIZE_SRT, Action.ALL]:
+        for proj in projects:
+            try:
+                optimize_srt(proj, args.max_words)
+            except Exception as e:
+                print(e)
+        print("+++OPTIMIZE_SRT done")
+
 
 if __name__ == '__main__':
     main()
