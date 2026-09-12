@@ -22,17 +22,31 @@ poetry env activate
 ## Compile and build Whisper.cpp (Jan 2025)
 ```
 git clone https://github.com/ggerganov/whisper.cpp
+mv whisper.cpp whisper_<name>
+ln -s whisper_<name>/ whisper.cpp
 git checkout fb36a1538a8a74921bd64d69c03baadb54217648
 cd whisper.cpp
 cmake -B build
 cmake --build build --config Release
 ./models/download-ggml-model.sh large-v3
+./models/download-vad-model.sh silero-v6.2.0
 ```
 
 create a simlink so the main script can find main
 ```
-ln -s ./build/bin/whisper-cli main
+ln -s ./build/bin/whisper-cli main/
 ```
+
+FAIL: ./build/bin/whisper-cli    --file ./samples/jfk.wav    --model ./models/ggml-base.en.bin    --vad    --vad-model ./models/silero-v6.2.0-ggml.bin
+FAIL: ./whisper_dev/main -l auto  -m ./whisper_dev/models/ggml-large-v3.bin --vad -vm ./whisper_dev/models/ggml-silero-v6.2.0.bin f -f "/Users/jsrawan/Pictures/hfunds/content/Partners/Jodha_Srawan/Jodha-2026-Surrender.mp4_Mom_Surrender_JodhaReturn/Surrender_Mom.wav"
+FAIL: ./whisper.cpp/build/bin/whisper-cli -l auto  -m ./whisper.cpp/models/ggml-base.en.bin --vad -vm ./whisper_dev/models/ggml-silero-v6.2.0.bin -ng -f ./whisper.cpp/samples/jfk.wav
+c       
+Pass: ./build/bin/whisper-cli    --file ./samples/jfk.wav    --model ./models/ggml-base.en.bin -ng    --vad    --vad-model ./models/ggml-silero-v6.2.0.bin
+Pass: /build/bin/whisper-cli    --file ./samples/jfk.wav    --model ./models/ggml-base.en.bin   --vad    --vad-model ./models/ggml-silero-v6.2.0.bin
+
+Pass: /build/bin/whisper-cli    --file ./samples/jfk.wav    --model ./models/ggml-base.en.bin   --vad    --vad-model ./models/ggml-silero-v6.2.0.bin
+
+
 
 ## Create a CSV file to do conversion, example headers:
 `Source_File_Path|Source_File_Name|Subject_Name|Subject_Tag|Campaign`
