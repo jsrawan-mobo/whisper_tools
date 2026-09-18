@@ -37,15 +37,6 @@ create a simlink so the main script can find main
 ln -s ./build/bin/whisper-cli main/
 ```
 
-FAIL: ./build/bin/whisper-cli    --file ./samples/jfk.wav    --model ./models/ggml-base.en.bin    --vad    --vad-model ./models/silero-v6.2.0-ggml.bin
-FAIL: ./whisper_dev/main -l auto  -m ./whisper_dev/models/ggml-large-v3.bin --vad -vm ./whisper_dev/models/ggml-silero-v6.2.0.bin f -f "/Users/jsrawan/Pictures/hfunds/content/Partners/Jodha_Srawan/Jodha-2026-Surrender.mp4_Mom_Surrender_JodhaReturn/Surrender_Mom.wav"
-FAIL: ./whisper.cpp/build/bin/whisper-cli -l auto  -m ./whisper.cpp/models/ggml-base.en.bin --vad -vm ./whisper_dev/models/ggml-silero-v6.2.0.bin -ng -f ./whisper.cpp/samples/jfk.wav
-c       
-Pass: ./build/bin/whisper-cli    --file ./samples/jfk.wav    --model ./models/ggml-base.en.bin -ng    --vad    --vad-model ./models/ggml-silero-v6.2.0.bin
-Pass: /build/bin/whisper-cli    --file ./samples/jfk.wav    --model ./models/ggml-base.en.bin   --vad    --vad-model ./models/ggml-silero-v6.2.0.bin
-
-Pass: /build/bin/whisper-cli    --file ./samples/jfk.wav    --model ./models/ggml-base.en.bin   --vad    --vad-model ./models/ggml-silero-v6.2.0.bin
-
 
 
 ## Create a CSV file to do conversion, example headers:
