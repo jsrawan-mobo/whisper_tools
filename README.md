@@ -1,18 +1,36 @@
 # Whisper tools
 These are tools that use whisper, ffmpeg etc to process foriegn language videos
 
-## Install brew and then install ffmpeg
+## Install ffmpeg and cmake
+### MacOS
 ```
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 brew install FFmpeg
 brew install cmake
 ```
 
-# Install Python Poetry Environment (2.0 version)
+### Linux (Ubuntu)
+```
+sudo apt install ffmpeg
+sudo apt install cmake
+```
+
+## Install Python Poetry Environment (2.0 version)
+### MacOS
 ```
 brew install pyenv
 pyenv install 3.12.7
 pyenv global 3.12.7
+poetry install
+poetry env activate
+```
+
+### Linux (Ubuntu)
+```
+sudo apt install pyenv
+pyenv install 3.12.7
+pyenv global 3.12.7
+sudo apt install poetry
 poetry install
 poetry env activate
 ```
