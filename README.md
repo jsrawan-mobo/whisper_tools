@@ -30,7 +30,7 @@ poetry env activate
 sudo apt install pyenv
 pyenv install 3.12.7
 pyenv global 3.12.7
-sudo apt install poetry
+sudo apt install poetry3-poetry
 poetry install
 poetry env activate
 ```
@@ -42,6 +42,7 @@ poetry env activate
 git clone https://github.com/ggerganov/whisper.cpp
 mv whisper.cpp whisper_<name>
 ln -s whisper_<name>/ whisper.cpp
+git checkout 1fe009caeda75f69bc864d6370b10674e45a92bd
 cd whisper.cpp
 cmake -B build
 cmake --build build --config Release

@@ -217,12 +217,14 @@ def extract_audio(proj: Project) -> str:
     run_command_check(ffmpeg_2)
     return audio_path
 
-def extract_srt(proj: Project, duration:int, model_name):
+def extract_srt(proj: Project, duration:int, model_name, vad_model_name):
     # Takes an audio file and create an optimized srt file
     project_audio_path = os.path.join(proj.output_path, proj.audio_file)
 
     duration_cmd = f"-d {duration * 1000}" if duration else ""
-    whisper_cmd = [f"./whisper.cpp/main -l en -lpt 2.0 -osrt -m ./whisper.cpp/models/{model_name} {duration_cmd} -f \"{project_audio_path}\""]
+    # vad_cmd = f"--vad -vm ./whisper.cpp/models/{vad_model_name}"
+    vad_cmd = ""
+    whisper_cmd = [f"./whisper.cpp/main -l en -lpt 2.0 -osrt -m ./whisper.cpp/models/{model_name} {duration_cmd} {vad_cmd} -f \"{project_audio_path}\""]
     print(whisper_cmd)
 
     run_command_check(whisper_cmd)
@@ -250,7 +252,7 @@ def main():
     parser.add_argument('-f', '--filter', type=str, default=None, help='a filter on which projects to process by regex')
     parser.add_argument('-l', '--model', type=str, default="ggml-large-v3.bin", help='Pick model', required=False)
     parser.add_argument('-o', '--output_dirname_override', type=str, default=None, help='OVERRIDE ALL to be in a single folder', required=False)
-
+    parser.add_argument('-vm', '--vad_model', type=str, default="ggml-silero-v6.2.0.bin", help='Pick VAD model', required=False)
 
 
     args = parser.parse_args()
@@ -282,7 +284,7 @@ def main():
     if args.action in [Action.EXTRACT_SRT, Action.ALL]:
         for proj in projects:
             try:
-                extract_srt(proj, args.duration, args.model)
+                extract_srt(proj, args.duration, args.model, args.vad_model)
             except Exception as e:
                 print(e)
         print("+++EXTRACT_SRT done")
