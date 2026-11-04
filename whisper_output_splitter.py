@@ -16,7 +16,7 @@ from nltk.tokenize import sent_tokenize, word_tokenize
 
 
 
-Project = namedtuple('Project', ['source_mpeg_path', 'output_path', 'mpeg_file', 'audio_file', 'srt_file', 'optimized_srt'])
+Project = namedtuple('Project', ['source_mpeg_path', 'output_path', 'mpeg_file', 'audio_file', 'srt_file', 'optimized_srt', 'token_confidence_file', 'word_confidence_file'])
 
 
 class Action(Enum):
@@ -171,7 +171,9 @@ def get_project_names(project_csv_path, source_mpeg_folder, source_mpeg_name, su
     project_audio_file = f"{subject_name}_{subject_tag}.wav"
     project_srt_file = f"{subject_name}_{subject_tag}.wav.srt"
     project_optimized_srt_file = f"{subject_name}_{subject_tag}.wav_optimized.srt"
-    return source_mpeg_path, project_output_dir, project_mpeg_file, project_audio_file, project_srt_file, project_optimized_srt_file
+    project_token_confidence_file = f"{subject_name}_{subject_tag}.wav.score.txt"
+    project_word_confidence_file = f"{subject_name}_{subject_tag}.wav.word_score.txt"
+    return source_mpeg_path, project_output_dir, project_mpeg_file, project_audio_file, project_srt_file, project_optimized_srt_file, project_token_confidence_file, project_word_confidence_file
 
 
 def read_projects(project_csv_path, filter_proj=None, output_dir_override=None) -> List[Project]:
@@ -183,7 +185,7 @@ def read_projects(project_csv_path, filter_proj=None, output_dir_override=None) 
         next(csv_reader, None) #header
         for row in csv_reader:
             source_mpeg_folder, source_mpeg_name, subject_name, subject_tag, campaign = row
-            (source_mpeg_path, project_output_dir, project_mpeg_file, project_audio_file, project_srt_file, project_optimized_srt) = get_project_names(
+            (source_mpeg_path, project_output_dir, project_mpeg_file, project_audio_file, project_srt_file, project_optimized_srt, project_token_confidence_file, project_word_confidence_file) = get_project_names(
                 project_csv_path, source_mpeg_folder, source_mpeg_name, subject_name, subject_tag, campaign)
 
             final_output_dir = project_output_dir
@@ -194,7 +196,7 @@ def read_projects(project_csv_path, filter_proj=None, output_dir_override=None) 
             if source_mpeg_path == "":
                 continue
             if not filter_proj or re.search(filter_proj, project_output_dir):
-                projects.append(Project(source_mpeg_path, final_output_dir, project_mpeg_file, project_audio_file, project_srt_file, project_optimized_srt))
+                projects.append(Project(source_mpeg_path, final_output_dir, project_mpeg_file, project_audio_file, project_srt_file, project_optimized_srt, project_token_confidence_file, project_word_confidence_file))
 
     return projects
 
@@ -217,16 +219,20 @@ def extract_audio(proj: Project) -> str:
     run_command_check(ffmpeg_2)
     return audio_path
 
-def extract_srt(proj: Project, duration:int, model_name, vad_enable, vad_model_name):
+def extract_srt(proj: Project, duration:int, model_name, vad_model_name, confidence):
     # Takes an audio file and create an optimized srt file
     project_audio_path = os.path.join(proj.output_path, proj.audio_file)
 
     duration_cmd = f"-d {duration * 1000}" if duration else ""
-    vad_cmd = f"--vad -vm ./whisper.cpp/models/{vad_model_name}" if vad_enable else ""
-    whisper_cmd = [f"./whisper.cpp/main -l en -lpt 2.0 -osrt -m ./whisper.cpp/models/{model_name} {duration_cmd} {vad_cmd} -f \"{project_audio_path}\""]
+    vad_cmd = f"--vad -vm ./whisper.cpp/models/{vad_model_name}" 
+    confidence_cmd = "-ls" if confidence else ""
+    whisper_cmd = [f"./whisper.cpp/main -l en -lpt 2.0 -osrt -m ./whisper.cpp/models/{model_name} {duration_cmd} {vad_cmd} {confidence_cmd} -f \"{project_audio_path}\""]
     print(whisper_cmd)
 
     run_command_check(whisper_cmd)
+    if confidence:
+        extract_word_confidence(proj)
+
     audio_path = Path(project_audio_path)
     srt_file_path = f"{audio_path}.srt"
     return srt_file_path
@@ -240,6 +246,35 @@ def optimize_srt(proj: Project, max_words: int):
     with output_file_path.open('w') as output_file:
         output_file.write(file_output)
 
+def extract_word_confidence(proj: Project):
+    token_confidence_path = os.path.join(proj.output_path, proj.token_confidence_file)
+    word_confidence_path = os.path.join(proj.output_path, proj.word_confidence_file)
+
+    with open(token_confidence_path, "r") as input_file, open(word_confidence_path, "w") as output_file:
+        currentWord = ''
+        tokensInCurrentWord = 0
+        cumulativeProbability = 1.00
+        for line in input_file:
+            if line[0] == '[':
+                continue
+            else:
+                if (line[0] == ' ' and tokensInCurrentWord != 0):
+                    output_file.write(currentWord + '\t' + str(pow(cumulativeProbability, (1 / tokensInCurrentWord))) + '\n')
+                    
+                    currentWord = ''
+                    tokensInCurrentWord = 0
+                    cumulativeProbability = 1.00
+                words = line.strip().split('\t')
+                currentWord += words[0]
+                cumulativeProbability *= float(words[1])
+                tokensInCurrentWord += 1
+
+        if tokensInCurrentWord != 0:
+            output_file.write(currentWord + '\t' + str(pow(cumulativeProbability, (1 / tokensInCurrentWord))))
+
+    print("Extracted token confidence scores into words.")
+    return word_confidence_path
+
 def main():
     parser = argparse.ArgumentParser(description='Process a mpeg file source and creates a project file with SRT and AUDIO assests')
 
@@ -251,8 +286,8 @@ def main():
     parser.add_argument('-f', '--filter', type=str, default=None, help='a filter on which projects to process by regex')
     parser.add_argument('-l', '--model', type=str, default="ggml-large-v3.bin", help='Pick model', required=False)
     parser.add_argument('-o', '--output_dirname_override', type=str, default=None, help='OVERRIDE ALL to be in a single folder', required=False)
-    parser.add_argument('-v', '--vad_enable', action="store_true", help="Enable using VAD")
-    parser.add_argument('-vm', '--vad_model', type=str, default="ggml-silero-v6.2.0.bin", help='Pick VAD model (only used if VAD is enabled)', required=False)
+    parser.add_argument('-vm', '--vad_model', type=str, default="ggml-silero-v6.2.0.bin", help='Pick VAD model', required=False)
+    parser.add_argument('-c', '--confidence', action='store_true', help='output per-word confidence scores (for testing)')
 
 
     args = parser.parse_args()
@@ -285,7 +320,7 @@ def main():
     if args.action in [Action.EXTRACT_SRT, Action.ALL]:
         for proj in projects:
             try:
-                extract_srt(proj, args.duration, args.model, args.vad_enable, args.vad_model)
+                extract_srt(proj, args.duration, args.model, args.vad_model, args.confidence)
             except Exception as e:
                 print(e)
         print("+++EXTRACT_SRT done")
