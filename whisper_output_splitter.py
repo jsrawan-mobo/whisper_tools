@@ -10,6 +10,7 @@ from enum import Enum
 from pathlib import Path
 from shutil import copyfile
 from typing import List, Tuple, NamedTuple
+from gemini_transcriber import gemini_extract_srt
 
 import nltk
 from nltk.tokenize import sent_tokenize, word_tokenize
@@ -223,12 +224,13 @@ def extract_srt(proj: Project, duration:int, engine, whisper_model_name, gemini_
 
     if engine == 'whisper':
         duration_cmd = f"-d {duration * 1000}" if duration else ""
-        whisper_cmd = [f"./whisper.cpp/main -l en -lpt 2.0 -osrt -m ./whisper.cpp/models/{gemini_model_name} {duration_cmd} -f \"{project_audio_path}\""]
+        whisper_cmd = [f"./whisper.cpp/main -l en -lpt 2.0 -osrt -m ./whisper.cpp/models/{whisper_model_name} {duration_cmd} -f \"{project_audio_path}\""]
         print(whisper_cmd)
 
         run_command_check(whisper_cmd)
     else:
-        print(whisper_model_name)
+        gemini_extract_srt(project_audio_path, gemini_model_name)
+
     audio_path = Path(project_audio_path)
     srt_file_path = f"{audio_path}.srt"
     return srt_file_path
@@ -258,10 +260,10 @@ def main():
     optimize_group.add_argument('-f', '--filter', type=str, default=None, help='a filter on which projects to process by regex')
 
     whisper_group = parser.add_argument_group('Whisper Options (only used if Whisper is selected as engine)')
-    whisper_group.add_argument('-l', '--whisper-model', type=str, default="ggml-large-v3.bin", help='Pick whisper model', required=False)
+    whisper_group.add_argument('-l', '--whisper_model', type=str, default="ggml-large-v3.bin", help='Pick whisper model', required=False)
 
     gemini_group = parser.add_argument_group('Gemini Options (only used if Gemini is selected as engine)')
-    gemini_group.add_argument('-g', '--gemini-model', type=str, required=False)
+    gemini_group.add_argument('-g', '--gemini_model', type=str, default="gemini-3.8-flash", required=False)
 
 
 
@@ -294,7 +296,7 @@ def main():
     if args.action in [Action.EXTRACT_SRT, Action.ALL]:
         for proj in projects:
             try:
-                extract_srt(proj, args.duration, args.whisper_model)
+                extract_srt(proj, args.duration, args.engine, args.whisper_model, args.gemini_model)
             except Exception as e:
                 print(e)
         print("+++EXTRACT_SRT done")
