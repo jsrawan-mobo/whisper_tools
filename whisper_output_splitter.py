@@ -217,15 +217,18 @@ def extract_audio(proj: Project) -> str:
     run_command_check(ffmpeg_2)
     return audio_path
 
-def extract_srt(proj: Project, duration:int, model_name):
+def extract_srt(proj: Project, duration:int, engine, whisper_model_name, gemini_model_name):
     # Takes an audio file and create an optimized srt file
     project_audio_path = os.path.join(proj.output_path, proj.audio_file)
 
-    duration_cmd = f"-d {duration * 1000}" if duration else ""
-    whisper_cmd = [f"./whisper.cpp/main -l en -lpt 2.0 -osrt -m ./whisper.cpp/models/{model_name} {duration_cmd} -f \"{project_audio_path}\""]
-    print(whisper_cmd)
+    if engine == 'whisper':
+        duration_cmd = f"-d {duration * 1000}" if duration else ""
+        whisper_cmd = [f"./whisper.cpp/main -l en -lpt 2.0 -osrt -m ./whisper.cpp/models/{gemini_model_name} {duration_cmd} -f \"{project_audio_path}\""]
+        print(whisper_cmd)
 
-    run_command_check(whisper_cmd)
+        run_command_check(whisper_cmd)
+    else:
+        print(whisper_model_name)
     audio_path = Path(project_audio_path)
     srt_file_path = f"{audio_path}.srt"
     return srt_file_path
@@ -242,14 +245,23 @@ def optimize_srt(proj: Project, max_words: int):
 def main():
     parser = argparse.ArgumentParser(description='Process a mpeg file source and creates a project file with SRT and AUDIO assests')
 
-    parser.add_argument('-a', '--action', type=Action, choices=list(Action), help='The action type', required=True)
-    parser.add_argument('-p', '--project_csv_file', type=str, help='The path to the project file to process', required=True)
-    parser.add_argument('-m', '--max_words', type=int, default=7, help='Maximum number of words per chunk')
-    parser.add_argument('-n', '--num_projects', type=int, default=None, help='max number of projects process')
-    parser.add_argument('-d', '--duration', type=int, default=None, help='max duration in seconds for each file to extract(for testing)')
-    parser.add_argument('-f', '--filter', type=str, default=None, help='a filter on which projects to process by regex')
-    parser.add_argument('-l', '--model', type=str, default="ggml-large-v3.bin", help='Pick model', required=False)
-    parser.add_argument('-o', '--output_dirname_override', type=str, default=None, help='OVERRIDE ALL to be in a single folder', required=False)
+    core_group = parser.add_argument_group('Core Options')
+    core_group.add_argument('-a', '--action', type=Action, choices=list(Action), help='The action type', required=True)
+    core_group.add_argument('-p', '--project_csv_file', type=str, help='The path to the project file to process', required=True)
+    core_group.add_argument('-e', '--engine', type=str, choices=['gemini', 'whisper'], default='whisper', help='The backend to use')
+    core_group.add_argument('-n', '--num_projects', type=int, default=None, help='max number of projects process')
+    core_group.add_argument('-o', '--output_dirname_override', type=str, default=None, help='OVERRIDE ALL to be in a single folder', required=False)
+
+    optimize_group = parser.add_argument_group('Optimization and Advanced Options')
+    optimize_group.add_argument('-d', '--duration', type=int, default=None, help='max duration in seconds for each file to extract(for testing)')
+    optimize_group.add_argument('-m', '--max_words', type=int, default=7, help='Maximum number of words per chunk')
+    optimize_group.add_argument('-f', '--filter', type=str, default=None, help='a filter on which projects to process by regex')
+
+    whisper_group = parser.add_argument_group('Whisper Options (only used if Whisper is selected as engine)')
+    whisper_group.add_argument('-l', '--whisper-model', type=str, default="ggml-large-v3.bin", help='Pick whisper model', required=False)
+
+    gemini_group = parser.add_argument_group('Gemini Options (only used if Gemini is selected as engine)')
+    gemini_group.add_argument('-g', '--gemini-model', type=str, required=False)
 
 
 
@@ -282,7 +294,7 @@ def main():
     if args.action in [Action.EXTRACT_SRT, Action.ALL]:
         for proj in projects:
             try:
-                extract_srt(proj, args.duration, args.model)
+                extract_srt(proj, args.duration, args.whisper_model)
             except Exception as e:
                 print(e)
         print("+++EXTRACT_SRT done")
