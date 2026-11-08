@@ -25,6 +25,7 @@ class Action(Enum):
     EXTRACT_AUDIO = 'extract_audio'
     EXTRACT_SRT = 'extract_srt'
     OPTIMIZE_SRT = 'optimize_srt'
+    EXTRACT_WORD_CONFIDENCE = 'extract_word_confidence'
 
 
 def convert_srt_time_to_seconds(srt_time) -> float:
@@ -219,20 +220,16 @@ def extract_audio(proj: Project) -> str:
     run_command_check(ffmpeg_2)
     return audio_path
 
-def extract_srt(proj: Project, duration:int, model_name, vad_model_name, confidence):
+def extract_srt(proj: Project, duration:int, model_name, vad_model_name):
     # Takes an audio file and create an optimized srt file
     project_audio_path = os.path.join(proj.output_path, proj.audio_file)
 
     duration_cmd = f"-d {duration * 1000}" if duration else ""
     vad_cmd = f"--vad -vm ./whisper.cpp/models/{vad_model_name}" 
-    confidence_cmd = "-ls" if confidence else ""
-    whisper_cmd = [f"./whisper.cpp/main -l en -lpt 2.0 -osrt -m ./whisper.cpp/models/{model_name} {duration_cmd} {vad_cmd} {confidence_cmd} -f \"{project_audio_path}\""]
+    whisper_cmd = [f"./whisper.cpp/main -l en -lpt 2.0 -osrt -m ./whisper.cpp/models/{model_name} {duration_cmd} {vad_cmd} -f \"{project_audio_path}\""]
     print(whisper_cmd)
 
     run_command_check(whisper_cmd)
-    if confidence:
-        extract_word_confidence(proj)
-
     audio_path = Path(project_audio_path)
     srt_file_path = f"{audio_path}.srt"
     return srt_file_path
@@ -272,7 +269,6 @@ def extract_word_confidence(proj: Project):
         if tokensInCurrentWord != 0:
             output_file.write(currentWord + '\t' + str(pow(cumulativeProbability, (1 / tokensInCurrentWord))))
 
-    print("Extracted token confidence scores into words.")
     return word_confidence_path
 
 def main():
@@ -287,8 +283,6 @@ def main():
     parser.add_argument('-l', '--model', type=str, default="ggml-large-v3.bin", help='Pick model', required=False)
     parser.add_argument('-o', '--output_dirname_override', type=str, default=None, help='OVERRIDE ALL to be in a single folder', required=False)
     parser.add_argument('-vm', '--vad_model', type=str, default="ggml-silero-v6.2.0.bin", help='Pick VAD model', required=False)
-    parser.add_argument('-c', '--confidence', action='store_true', help='output per-word confidence scores (for testing)')
-
 
     args = parser.parse_args()
 
@@ -320,11 +314,10 @@ def main():
     if args.action in [Action.EXTRACT_SRT, Action.ALL]:
         for proj in projects:
             try:
-                extract_srt(proj, args.duration, args.model, args.vad_model, args.confidence)
+                extract_srt(proj, args.duration, args.model, args.vad_model)
             except Exception as e:
                 print(e)
         print("+++EXTRACT_SRT done")
-
 
     if args.action in [Action.OPTIMIZE_SRT, Action.ALL]:
         for proj in projects:
@@ -333,6 +326,14 @@ def main():
             except Exception as e:
                 print(e)
         print("+++OPTIMIZE_SRT done")
+
+    if args.action in [Action.EXTRACT_WORD_CONFIDENCE, Action.ALL]:
+        for proj in projects:
+            try:
+                extract_word_confidence(proj)
+            except Exception as e:
+                print(e)
+        print("+++EXTRACT_WORD_CONFIDENCE done")
 
 
 if __name__ == '__main__':
