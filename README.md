@@ -1,22 +1,30 @@
 # Whisper tools
-These are tools that use whisper, ffmpeg etc to process foriegn language videos
+These are tools that use whisper, ffmpeg etc to process foriegn language videos.
 
-## Install ffmpeg and cmake
-### MacOS
+## Setup
+Currently, only MacOS and Ubuntu are supported. To setup, simply run
+```
+chmod +x setup.sh
+./setup.sh
+```
+
+## Manual Setup
+### Install ffmpeg and cmake
+#### MacOS
 ```
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 brew install FFmpeg
 brew install cmake
 ```
 
-### Linux (Ubuntu)
+#### Linux (Ubuntu)
 ```
 sudo apt install ffmpeg
 sudo apt install cmake
 ```
 
-## Install Python Poetry Environment (2.0 version)
-### MacOS
+### Install Python Poetry Environment (2.0 version)
+#### MacOS
 ```
 brew install pyenv
 pyenv install 3.12.7
@@ -25,7 +33,7 @@ poetry install
 poetry env activate
 ```
 
-### Linux (Ubuntu)
+#### Linux (Ubuntu)
 ```
 sudo apt install pyenv
 pyenv install 3.12.7
@@ -37,7 +45,7 @@ poetry env activate
 
 
 
-## Compile and build Whisper.cpp (Jan 2025)
+### Compile and build Whisper.cpp (Jan 2025)
 ```
 git clone https://github.com/ggerganov/whisper.cpp
 mv whisper.cpp whisper_<name>
