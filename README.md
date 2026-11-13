@@ -1,6 +1,8 @@
 # Whisper tools
 These are tools that use whisper, ffmpeg etc to process foriegn language videos.
 
+
+
 ## Setup
 Currently, only MacOS and Ubuntu are supported. To setup, simply run
 ```
@@ -43,8 +45,6 @@ poetry install
 poetry env activate
 ```
 
-
-
 ### Compile and build Whisper.cpp (Jan 2025)
 ```
 git clone https://github.com/ggerganov/whisper.cpp
@@ -62,6 +62,15 @@ create a simlink so the main script can find main
 ```
 ln -s ./build/bin/whisper-cli main/
 ```
+
+
+# Environments
+To connect to the correct environment, use the example .env files below as a guide on creating a custom config for your work
+
+* .env.example - a list of all keys that can be filled
+* .env.local - a config that uses the local docker for database (qdrant)
+* .env.local.dev - a config that connect to the AWS dev environment
+* .env.local.prod - a config that connects to the AWS prod environment
 
 
 
