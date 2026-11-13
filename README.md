@@ -1,14 +1,30 @@
 # Whisper tools
-These are tools that use whisper, ffmpeg etc to process foriegn language videos
+These are tools that use whisper, ffmpeg etc to process foriegn language videos.
 
-## Install brew and then install ffmpeg
+## Setup
+Currently, only MacOS and Ubuntu are supported. To setup, simply run
+```
+chmod +x setup.sh
+./setup.sh
+```
+
+## Manual Setup
+### Install ffmpeg and cmake
+#### MacOS
 ```
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 brew install FFmpeg
 brew install cmake
 ```
 
-# Install Python Poetry Environment (2.0 version)
+#### Linux (Ubuntu)
+```
+sudo apt install ffmpeg
+sudo apt install cmake
+```
+
+### Install Python Poetry Environment (2.0 version)
+#### MacOS
 ```
 brew install pyenv
 pyenv install 3.12.7
@@ -17,14 +33,24 @@ poetry install
 poetry env activate
 ```
 
+#### Linux (Ubuntu)
+```
+sudo apt install pyenv
+pyenv install 3.12.7
+pyenv global 3.12.7
+sudo apt install poetry3-poetry
+poetry install
+poetry env activate
+```
 
 
-## Compile and build Whisper.cpp (Jan 2025)
+
+### Compile and build Whisper.cpp (Jan 2025)
 ```
 git clone https://github.com/ggerganov/whisper.cpp
 mv whisper.cpp whisper_<name>
 ln -s whisper_<name>/ whisper.cpp
-git checkout fb36a1538a8a74921bd64d69c03baadb54217648
+git checkout 1fe009caeda75f69bc864d6370b10674e45a92bd
 cd whisper.cpp
 cmake -B build
 cmake --build build --config Release
@@ -46,14 +72,14 @@ Folders will be created at the location of CSV file
 
 ## Run output splitter to create folders, convert audio, and run whisper and split to final versions
 ```
-python whisper_output_splitter.py -a all -p ~/Pictures/hfunds/content/HearOurStories/Interviews_Dec_8_HearOurStories.csv
+poetry run python whisper_output_splitter.py -a all -p ~/Pictures/hfunds/content/HearOurStories/Interviews_Dec_8_HearOurStories.csv
 ```
 
 ## For debugging you can run an individual stage with the -a flag and you can modify other flags as follows
 
 ### To split to 5 words per line, and only first 60 seconds of the project name matching 'Irina', only processing the SRT generation step.
 ```
-python whisper_output_splitter.py -a create_srt -m 5 -n 1 -d 60  -f "Irina"  -p ~/Pictures/hfunds/content/HearOurStories/Interviews_Dec_8_HearOurStories.csv
+poetry run python whisper_output_splitter.py -a create_srt -m 5 -n 1 -d 60  -f "Irina"  -p ~/Pictures/hfunds/content/HearOurStories/Interviews_Dec_8_HearOurStories.csv
 ```
 
 ## FAQ
