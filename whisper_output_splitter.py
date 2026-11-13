@@ -226,7 +226,7 @@ def extract_srt(proj: Project, duration:int, model_name, vad_model_name):
 
     duration_cmd = f"-d {duration * 1000}" if duration else ""
     vad_cmd = f"--vad -vm ./whisper.cpp/models/{vad_model_name}" 
-    whisper_cmd = [f"./whisper.cpp/main -l en -lpt 2.0 -osrt -m ./whisper.cpp/models/{model_name} {duration_cmd} {vad_cmd} -f \"{project_audio_path}\""]
+    whisper_cmd = [f"./whisper.cpp/main -l en -lpt 2.0 -osrt -ls -m ./whisper.cpp/models/{model_name} {duration_cmd} {vad_cmd} -f \"{project_audio_path}\""]
     print(whisper_cmd)
 
     run_command_check(whisper_cmd)

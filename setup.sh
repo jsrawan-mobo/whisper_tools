@@ -41,7 +41,7 @@ fi
 poetry install
 poetry env activate
 
-# 3. Clone and buil Whisper.cpp
+# 3. Clone and build Whisper.cpp
 if [ ! -d "whisper.cpp" ]; then
     echo "Cloning whisper.cpp..."
     git clone https://github.com/ggerganov/whisper.cpp
