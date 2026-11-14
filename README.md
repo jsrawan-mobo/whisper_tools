@@ -1,6 +1,8 @@
 # Whisper tools
 These are tools that use whisper, ffmpeg etc to process foriegn language videos.
 
+
+
 ## Setup
 Currently, only MacOS and Ubuntu are supported. To setup, simply run
 ```
@@ -8,61 +10,25 @@ chmod +x setup.sh
 ./setup.sh
 ```
 
-## Manual Setup
-### Install ffmpeg and cmake
-#### MacOS
-```
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-brew install FFmpeg
-brew install cmake
-```
-
-#### Linux (Ubuntu)
-```
-sudo apt install ffmpeg
-sudo apt install cmake
-```
-
-### Install Python Poetry Environment (2.0 version)
-#### MacOS
-```
-brew install pyenv
-pyenv install 3.12.7
-pyenv global 3.12.7
-poetry install
-poetry env activate
-```
-
-#### Linux (Ubuntu)
-```
-sudo apt install pyenv
-pyenv install 3.12.7
-pyenv global 3.12.7
-sudo apt install poetry3-poetry
-poetry install
-poetry env activate
-```
-
-
-
-### Compile and build Whisper.cpp (Jan 2025)
-```
-git clone https://github.com/ggerganov/whisper.cpp
-mv whisper.cpp whisper_<name>
-ln -s whisper_<name>/ whisper.cpp
-git checkout 1fe009caeda75f69bc864d6370b10674e45a92bd
-cd whisper.cpp
-cmake -B build
-cmake --build build --config Release
-./models/download-ggml-model.sh large-v3
-./models/download-vad-model.sh silero-v6.2.0
-```
-
 create a simlink so the main script can find main
 ```
 ln -s ./build/bin/whisper-cli main/
 ```
 
+
+# Environments
+To connect to the correct environment, use the example .env files below as a guide on creating a custom config for your work
+
+* .env.example - a list of all keys that can be filled
+* .env.local - a config that uses the local docker for database (qdrant)
+* .env.local.dev - a config that connect to the AWS dev environment
+* .env.local.prod - a config that connects to the AWS prod environment
+
+
+# Start the streamlit UI
+```
+poetry run streamlit start index.py
+```
 
 
 ## Create a CSV file to do conversion, example headers:
